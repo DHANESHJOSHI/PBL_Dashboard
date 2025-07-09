@@ -53,23 +53,24 @@ export async function POST(request) {
     try {
       if (!team.folderStructureEnabled || !team.folderStructure) {
         console.log(`Auto-creating folder structure for team: ${team.teamID}`);
-        
+
         const drive = await getDriveClient();
         const folderStructure = await createTeamFolderStructure(drive, team);
-        
+
         // Update team with folder structure and enable submissions
         await Team.findOneAndUpdate(
           { teamID: team.teamID },
-          { 
-            $set: { 
+          {
+            $set: {
               folderStructure: folderStructure,
               folderStructureEnabled: true,
               updatedAt: new Date()
             }
           }
         );
-        
+
         console.log(`Folder structure auto-created for team: ${team.teamID}`);
+        console.log(`Team folder link: ${folderStructure.teamFolderLink}`);
       }
     } catch (error) {
       console.error(`Failed to auto-create folder structure for team ${team.teamID}:`, error);
