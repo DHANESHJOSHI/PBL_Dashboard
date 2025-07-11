@@ -4,7 +4,9 @@ import { teamLoginSchema } from "@/lib/auth";
 import { generateTeamToken } from "@/lib/jwt";
 import connectDB from "@/lib/mongodb";
 import Team from "@/models/Team";
-import { getDriveClient, createTeamFolderStructure } from "@/lib/gdrive-utils";
+import { getDriveClient, createTeamFolderStructure } from "../../../../lib/gdrive-utils";
+import GlobalSetting from "@/models/GlobalSettings";
+
 
 export async function POST(request) {
   try {
@@ -16,7 +18,7 @@ export async function POST(request) {
     if (!validationResult.success) {
       const errors = validationResult.error.errors.map(err => err.message);
       return NextResponse.json(
-        createResponse(false, "Validation failed", { errors }), 
+        createResponse(false, "Validation failed", { errors }),
         { status: 400 }
       );
     }
@@ -34,7 +36,7 @@ export async function POST(request) {
 
     if (!team) {
       return NextResponse.json(
-        createResponse(false, "Invalid email or college ID. No team found with provided credentials"), 
+        createResponse(false, "Invalid email or college ID. No team found with provided credentials"),
         { status: 404 }
       );
     }
@@ -55,7 +57,15 @@ export async function POST(request) {
         console.log(`Auto-creating folder structure for team: ${team.teamID}`);
 
         const drive = await getDriveClient();
-        const folderStructure = await createTeamFolderStructure(drive, team);
+
+
+        const GlobalSettings = await GlobalSetting.findOne({ settingType: 'folderStructure' });
+
+        if (!GlobalSettings || !GlobalSettings.driveLink) {
+          throw new Error(`GlobalSettings or driveLink not found`);
+        }
+
+        const folderStructure = await createTeamFolderStructure(drive, team, GlobalSettings);
 
         // Update team with folder structure and enable submissions
         await Team.findOneAndUpdate(
@@ -70,12 +80,12 @@ export async function POST(request) {
         );
 
         console.log(`Folder structure auto-created for team: ${team.teamID}`);
-        console.log(`Team folder link: ${folderStructure.teamFolderLink}`);
+        console.log(`Team folder link: https://drive.google.com/drive/folders/${folderStructure.teamFolderId}`);
       }
     } catch (error) {
       console.error(`Failed to auto-create folder structure for team ${team.teamID}:`, error);
-      // Don't fail login if folder creation fails
     }
+
 
     // Generate JWT token
     const token = generateTeamToken({
@@ -104,7 +114,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Team login error:", error);
     return NextResponse.json(
-      createResponse(false, "Internal server error"), 
+      createResponse(false, "Internal server error"),
       { status: 500 }
     );
   }

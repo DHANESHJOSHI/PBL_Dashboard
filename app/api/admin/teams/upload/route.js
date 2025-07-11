@@ -74,14 +74,26 @@ async function handler(request) {
 
         // Required fields validation
         const requiredFields = {
+          'teamId': row.teamId || row['Team ID'] || row['team_id'],
           'teamName': row.teamName || row['Team Name'] || row['team_name'],
           'collegeName': row.collegeName || row['College Name'] || row['college_name'],
           'collegeId': row.collegeId || row['College ID'] || row['college_id'],
+          'internshipName': row.internshipName || row['Internship Name'] || row['internship_name'],
           'leaderName': row.leaderName || row['Leader Name'] || row['leader_name'],
+          'memberName': row.memberName || row['Member Name'] || row['member_name'],
           'email': row.email || row['Email'] || row['leader_email'],
           'totalMembers': row.totalMembers || row['Total Members'] || row['total_members'] || '1',
-          'totalFemaleMembers': row.totalFemaleMembers || row['Female Members'] || row['female_members'] || '0'
+          'totalFemaleMembers': row.totalFemaleMembers || row['Female Members'] || row['female_members'] || '0',
+          'collegePincode': row.collegePincode || row['College Pincode'] || row['college_pincode'],
+          'learningPlanCompletion': row.learningPlanCompletion || row['Learning Plan Completion'] || row['learning_plan_completion'],
+          'currentMarks': row.currentMarks || row['Current Marks'] || row['current_marks'],
+          'certificateLink': row.certificateLink || row['Certificate Link'] || row['certificate_link'],
+          'resumeLink': row.resumeLink || row['Resume Link'] || row['resume_link'],
+          'linkedinLink': row.linkedinLink || row['LinkedIn Link'] || row['linkedin_link'],
+          'portfolioLink': row.portfolioLink || row['Portfolio Link'] || row['portfolio_link'],
+          'githubLink': row.githubLink || row['Github Link'] || row['github_link']
         };
+        
 
         // Check for missing required fields
         const missingFields = [];
@@ -153,7 +165,7 @@ async function handler(request) {
           teamID,
           teamName: requiredFields.teamName || `Team ${teamID.slice(-6)}`,
           collegeName: requiredFields.collegeName,
-          collegePincode: row.collegePincode || row['College Pincode'] || row['pincode'] || '',
+          collegePincode: requiredFields.collegePincode || '',
           collegeId: requiredFields.collegeId,
           leaderName: requiredFields.leaderName,
           email: requiredFields.email.toLowerCase(),
@@ -164,13 +176,13 @@ async function handler(request) {
             {
               fullName: requiredFields.leaderName,
               email: requiredFields.email.toLowerCase(),
-              learningPlanCompletion: row.learningPlanCompletion || row['Learning Plan Completion'] || "0%",
-              currentMarks: row.currentMarks || row['Current Marks'] || "0",
-              certificateLink: row.certificateLink || row['Certificate Link'] || "",
-              resumeLink: row.resumeLink || row['Resume Link'] || "",
-              linkedinLink: row.linkedinLink || row['LinkedIn Link'] || "",
-              portfolioLink: row.portfolioLink || row['Portfolio Link'] || "",
-              githubLink: row.githubLink || row['GitHub Link'] || "",
+              learningPlanCompletion: requiredFields.learningPlanCompletion || "0%",
+              currentMarks: requiredFields.currentMarks || "0",
+              certificateLink: requiredFields.certificateLink || "",
+              resumeLink: requiredFields.resumeLink || "",
+              linkedinLink: requiredFields.linkedinLink || "",
+              portfolioLink: requiredFields.portfolioLink || "",
+              githubLink: requiredFields.githubLink || "",
               additionalNotes: row.additionalNotes || row['Additional Notes'] || "",
               isLeader: true,
             }
