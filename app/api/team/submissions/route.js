@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDriveClient, uploadToTeamFolder, ensureTeamFolderStructure } from '@/lib/gdrive-utils';
 import connectDB from '@/lib/mongodb';
 import Team from '@/models/Team';
+import GlobalSettings from '@/models/GlobalSettings';
 import { createResponse } from '@/lib/utils';
 import { requireTeam } from '@/middleware/auth';
 
@@ -107,7 +108,10 @@ async function handler(request) {
     if (!team.folderStructure || !team.folderStructure.memberFolders) {
       console.log('Team missing proper folder structure, creating it...');
       const drive = await getDriveClient();
-      const folderStructure = await ensureTeamFolderStructure(drive, team);
+      
+      // Get GlobalSettings for shared drive configuration
+      const globalSettings = await GlobalSettings.findOne();
+      const folderStructure = await ensureTeamFolderStructure(drive, team, globalSettings);
       
       // Update team with new folder structure
       await Team.findOneAndUpdate(
@@ -128,6 +132,9 @@ async function handler(request) {
     console.log('Getting Google Drive client...');
     const drive = await getDriveClient();
     
+    // Get GlobalSettings for shared drive configuration
+    const globalSettings = await GlobalSettings.findOne();
+    
     console.log('Starting file upload to Google Drive...');
     const uploadResult = await uploadToTeamFolder(
       drive, 
@@ -135,10 +142,24 @@ async function handler(request) {
       fileData, 
       submissionType, 
       subCategory, 
-      memberIndex ? parseInt(memberIndex) : null
+      memberIndex ? parseInt(memberIndex) : null,
+      globalSettings
     );
 
     console.log('Upload successful:', uploadResult);
+
+    // Update team with folder structure if it was recreated
+    if (team.folderStructure) {
+      await Team.findOneAndUpdate(
+        { teamID: teamId },
+        { 
+          $set: { 
+            folderStructure: team.folderStructure,
+            updatedAt: new Date()
+          }
+        }
+      );
+    }
 
     // Update team document based on submission type
     let updateData = { updatedAt: new Date() };
@@ -217,6 +238,10 @@ async function handler(request) {
       errorMessage = error.message;
     } else if (error.message.includes('Member folder not found')) {
       errorMessage = 'Member folder structure missing. Please contact admin to recreate folder structure.';
+    } else if (error.message.includes('GlobalSettings driveLink is required')) {
+      errorMessage = 'Shared drive not configured. Please contact admin to set up Google Drive shared folder.';
+    } else if (error.message.includes('Service Accounts do not have storage quota')) {
+      errorMessage = 'Google Drive storage quota issue. Please contact admin to configure shared drive.';
     }
     
     return NextResponse.json(createResponse(false, errorMessage), { status: 500 });

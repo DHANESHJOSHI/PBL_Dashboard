@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createResponse } from "@/lib/utils";
 import { requireTeam } from "@/middleware/auth";
-import connectDB from "@/lib/db";
+import connectDB from "@/lib/mongodb";
 import Team from "@/models/Team";
 
 async function handler(request) {
@@ -40,7 +40,7 @@ async function handler(request) {
   } catch (error) {
     console.error("Team verify error:", error);
     return NextResponse.json(
-      createResponse(false, "Internal server error"), 
+      createResponse(false, "Internal server error"),
       { status: 500 }
     );
   }

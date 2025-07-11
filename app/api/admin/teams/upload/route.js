@@ -62,154 +62,130 @@ async function handler(request) {
       );
     }
 
+    // Group data by teamId since each row represents a team member
+    const teamGroups = {};
+    const errors = [];
+    
+    // First pass: group rows by teamId and validate basic fields
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowNumber = i + 2;
+      
+      const teamId = row.teamId;
+      const memberName = row.memberName;
+      const memberEmail = row.email;
+      
+      if (!teamId || !memberName || !memberEmail) {
+        errors.push(`Row ${rowNumber}: Missing teamId, memberName, or email`);
+        continue;
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(memberEmail)) {
+        errors.push(`Row ${rowNumber}: Invalid email address format for ${memberEmail}`);
+        continue;
+      }
+      
+      if (!teamGroups[teamId]) {
+        teamGroups[teamId] = {
+          teamInfo: {
+            teamId: teamId,
+            teamName: row.teamName,
+            collegeName: row.collegeName,
+            collegeId: row.collegeId,
+            internshipName: row.internshipName,
+            leaderName: row.leaderName,
+            totalMembers: parseInt(row.totalMembers) || 1,
+            totalFemaleMembers: parseInt(row.totalFemaleMembers) || 0,
+            collegePincode: row.collegePincode || ''
+          },
+          members: [],
+          rows: []
+        };
+      }
+      
+      // Add member to the team
+      teamGroups[teamId].members.push({
+        fullName: memberName,
+        email: memberEmail.toLowerCase(),
+        learningPlanCompletion: row.learningPlanCompletion || "0%",
+        currentMarks: row.currentMarks || "0",
+        certificateLink: row.certificateLink || "",
+        resumeLink: row.resumeLink || "",
+        linkedinLink: row.linkedinLink || "",
+        portfolioLink: row.portfolioLink || "",
+        githubLink: row.githubLink || "",
+        additionalNotes: row.additionalNotes || "",
+        isLeader: memberName === row.leaderName
+      });
+      
+      teamGroups[teamId].rows.push(rowNumber);
+    }
+
     let successful = 0;
     let failed = 0;
-    const errors = [];
     const processedTeams = [];
 
-    for (let i = 0; i < data.length; i++) {
+    // Second pass: create teams from grouped data
+    for (const [teamId, teamGroup] of Object.entries(teamGroups)) {
       try {
-        const row = data[i];
-        const rowNumber = i + 2; // +2 because we start from row 2 (after header)
-
-        // Required fields validation
-        const requiredFields = {
-          'teamId': row.teamId || row['Team ID'] || row['team_id'],
-          'teamName': row.teamName || row['Team Name'] || row['team_name'],
-          'collegeName': row.collegeName || row['College Name'] || row['college_name'],
-          'collegeId': row.collegeId || row['College ID'] || row['college_id'],
-          'internshipName': row.internshipName || row['Internship Name'] || row['internship_name'],
-          'leaderName': row.leaderName || row['Leader Name'] || row['leader_name'],
-          'memberName': row.memberName || row['Member Name'] || row['member_name'],
-          'email': row.email || row['Email'] || row['leader_email'],
-          'totalMembers': row.totalMembers || row['Total Members'] || row['total_members'] || '1',
-          'totalFemaleMembers': row.totalFemaleMembers || row['Female Members'] || row['female_members'] || '0',
-          'collegePincode': row.collegePincode || row['College Pincode'] || row['college_pincode'],
-          'learningPlanCompletion': row.learningPlanCompletion || row['Learning Plan Completion'] || row['learning_plan_completion'],
-          'currentMarks': row.currentMarks || row['Current Marks'] || row['current_marks'],
-          'certificateLink': row.certificateLink || row['Certificate Link'] || row['certificate_link'],
-          'resumeLink': row.resumeLink || row['Resume Link'] || row['resume_link'],
-          'linkedinLink': row.linkedinLink || row['LinkedIn Link'] || row['linkedin_link'],
-          'portfolioLink': row.portfolioLink || row['Portfolio Link'] || row['portfolio_link'],
-          'githubLink': row.githubLink || row['Github Link'] || row['github_link']
-        };
+        const { teamInfo, members } = teamGroup;
         
-
-        // Check for missing required fields
+        // Validate required team fields
         const missingFields = [];
-        if (!requiredFields.collegeName) missingFields.push('College Name');
-        if (!requiredFields.collegeId) missingFields.push('College ID');
-        if (!requiredFields.leaderName) missingFields.push('Leader Name');
-        if (!requiredFields.email) missingFields.push('Email');
-
+        if (!teamInfo.collegeName) missingFields.push('College Name');
+        if (!teamInfo.collegeId) missingFields.push('College ID');
+        if (!teamInfo.leaderName) missingFields.push('Leader Name');
+        
         if (missingFields.length > 0) {
           failed++;
-          errors.push(`Row ${rowNumber}: Missing required fields: ${missingFields.join(', ')}`);
-          continue;
-        }
-
-        // Validate email format
-        const emailRegex = /^[^\s@]+@gmail\.com$/i;
-        if (!emailRegex.test(requiredFields.email)) {
-          failed++;
-          errors.push(`Row ${rowNumber}: Invalid Gmail address format`);
+          errors.push(`Team ${teamId}: Missing required fields: ${missingFields.join(', ')}`);
           continue;
         }
 
         // Check if team already exists
         const existingTeam = await Team.findOne({ 
           $or: [
-            { email: requiredFields.email.toLowerCase() },
-            { collegeId: requiredFields.collegeId, leaderName: requiredFields.leaderName }
+            { teamID: teamId },
+            { collegeId: teamInfo.collegeId, leaderName: teamInfo.leaderName }
           ]
         });
         
         if (existingTeam) {
           failed++;
-          errors.push(`Row ${rowNumber}: Team with email ${requiredFields.email} or same leader already exists`);
+          errors.push(`Team ${teamId}: Team already exists`);
           continue;
         }
 
-        // Generate unique team ID
-        const generateTeamID = () => {
-          const prefix = "IBMSB2025";
-          const randomString = Math.random().toString(36).substring(2, 12).toUpperCase();
-          return `${prefix}${randomString}`;
-        };
-
-        let teamID;
-        let isUnique = false;
-        let attempts = 0;
-        
-        while (!isUnique && attempts < 10) {
-          teamID = generateTeamID();
-          const existingTeamWithID = await Team.findOne({ teamID });
-          if (!existingTeamWithID) {
-            isUnique = true;
-          }
-          attempts++;
+        // Validate member count
+        if (members.length !== teamInfo.totalMembers) {
+          errors.push(`Team ${teamId}: Warning - Expected ${teamInfo.totalMembers} members but found ${members.length}`);
         }
 
-        if (!isUnique) {
+        // Find leader in members
+        const leader = members.find(m => m.isLeader);
+        if (!leader) {
           failed++;
-          errors.push(`Row ${rowNumber}: Could not generate unique team ID after multiple attempts`);
+          errors.push(`Team ${teamId}: Leader ${teamInfo.leaderName} not found in members list`);
           continue;
         }
-
-        // Parse numeric fields
-        const totalMembers = Math.max(1, parseInt(requiredFields.totalMembers) || 1);
-        const totalFemaleMembers = Math.max(0, Math.min(totalMembers, parseInt(requiredFields.totalFemaleMembers) || 0));
 
         // Create team object
         const teamData = {
-          teamID,
-          teamName: requiredFields.teamName || `Team ${teamID.slice(-6)}`,
-          collegeName: requiredFields.collegeName,
-          collegePincode: requiredFields.collegePincode || '',
-          collegeId: requiredFields.collegeId,
-          leaderName: requiredFields.leaderName,
-          email: requiredFields.email.toLowerCase(),
-          totalMembers,
-          totalFemaleMembers,
+          teamID: teamId,
+          teamName: teamInfo.teamName || `Team ${teamId.slice(-6)}`,
+          collegeName: teamInfo.collegeName,
+          collegePincode: teamInfo.collegePincode,
+          collegeId: teamInfo.collegeId,
+          internshipName: teamInfo.internshipName || "",
+          leaderName: teamInfo.leaderName,
+          email: leader.email,
+          totalMembers: teamInfo.totalMembers,
+          totalFemaleMembers: teamInfo.totalFemaleMembers,
           folderStructureEnabled: false,
-          members: [
-            {
-              fullName: requiredFields.leaderName,
-              email: requiredFields.email.toLowerCase(),
-              learningPlanCompletion: requiredFields.learningPlanCompletion || "0%",
-              currentMarks: requiredFields.currentMarks || "0",
-              certificateLink: requiredFields.certificateLink || "",
-              resumeLink: requiredFields.resumeLink || "",
-              linkedinLink: requiredFields.linkedinLink || "",
-              portfolioLink: requiredFields.portfolioLink || "",
-              githubLink: requiredFields.githubLink || "",
-              additionalNotes: row.additionalNotes || row['Additional Notes'] || "",
-              isLeader: true,
-            }
-          ],
+          members: members
         };
-
-        // Add additional members if specified
-        for (let memberIndex = 2; memberIndex <= totalMembers && memberIndex <= 8; memberIndex++) {
-          const memberName = row[`member${memberIndex}Name`] || row[`Member ${memberIndex} Name`] || '';
-          const memberEmail = row[`member${memberIndex}Email`] || row[`Member ${memberIndex} Email`] || '';
-          
-          if (memberName || memberEmail) {
-            teamData.members.push({
-              fullName: memberName || `Member ${memberIndex}`,
-              email: memberEmail || '',
-              learningPlanCompletion: "0%",
-              currentMarks: "0",
-              certificateLink: "",
-              resumeLink: "",
-              linkedinLink: "",
-              portfolioLink: "",
-              githubLink: "",
-              additionalNotes: "",
-              isLeader: false,
-            });
-          }
-        }
 
         // Create and save team
         const newTeam = new Team(teamData);
@@ -217,15 +193,16 @@ async function handler(request) {
         
         successful++;
         processedTeams.push({
-          teamID,
+          teamID: teamId,
           teamName: teamData.teamName,
           leaderName: teamData.leaderName,
-          email: teamData.email
+          email: teamData.email,
+          memberCount: members.length
         });
 
       } catch (error) {
         failed++;
-        errors.push(`Row ${i + 2}: ${error.message}`);
+        errors.push(`Team ${teamId}: ${error.message}`);
       }
     }
 

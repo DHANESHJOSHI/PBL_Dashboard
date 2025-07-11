@@ -3,20 +3,20 @@ import { verifyToken } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import Team from "@/models/Team";
 import { getDriveClient, uploadToTeamFolder } from "@/lib/gdrive-utils";
-import { createApiResponse } from "@/lib/db-utils";
+import { createResponse } from "@/lib/utils";
 
 export async function POST(request) {
   try {
     const authHeader = request.headers.get("authorization")
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json(createApiResponse(false, "Authorization required"), { status: 401 })
+      return NextResponse.json(createResponse(false, "Authorization required"), { status: 401 })
     }
 
     const token = authHeader.substring(7)
     const decoded = verifyToken(token)
 
     if (!decoded) {
-      return NextResponse.json(createApiResponse(false, "Invalid token"), { status: 401 })
+      return NextResponse.json(createResponse(false, "Invalid token"), { status: 401 })
     }
 
     const formData = await request.formData()
@@ -27,7 +27,7 @@ export async function POST(request) {
     const subCategory = formData.get("subCategory") || null
 
     if (!file || !fileType || !teamID || !memberEmail) {
-      return NextResponse.json(createApiResponse(false, "Missing required parameters"), { status: 400 })
+      return NextResponse.json(createResponse(false, "Missing required parameters"), { status: 400 })
     }
 
     const allowedTypes = {
@@ -41,18 +41,18 @@ export async function POST(request) {
     const fileExtension = fileName.substring(fileName.lastIndexOf("."))
 
     if (!allowedTypes[fileType]?.includes(fileExtension)) {
-      return NextResponse.json(createApiResponse(false, `Invalid file type for ${fileType}`), { status: 400 })
+      return NextResponse.json(createResponse(false, `Invalid file type for ${fileType}`), { status: 400 })
     }
 
     await connectDB()
     const team = await Team.findOne({ teamID })
     if (!team) {
-      return NextResponse.json(createApiResponse(false, "Team not found"), { status: 404 })
+      return NextResponse.json(createResponse(false, "Team not found"), { status: 404 })
     }
 
     const memberIndex = team.members.findIndex(m => m.email.toLowerCase() === memberEmail.toLowerCase())
     if (memberIndex === -1) {
-      return NextResponse.json(createApiResponse(false, "Member not found in team"), { status: 404 })
+      return NextResponse.json(createResponse(false, "Member not found in team"), { status: 404 })
     }
 
     const drive = await getDriveClient()
@@ -73,9 +73,9 @@ export async function POST(request) {
       memberIndex
     )
 
-    return NextResponse.json(createApiResponse(true, "File uploaded successfully", result))
+    return NextResponse.json(createResponse(true, "File uploaded successfully", result))
   } catch (error) {
     console.error("Upload error:", error)
-    return NextResponse.json(createApiResponse(false, `Upload failed: ${error.message}`), { status: 500 })
+    return NextResponse.json(createResponse(false, `Upload failed: ${error.message}`), { status: 500 })
   }
 }

@@ -33,6 +33,7 @@ export default function AdminDashboard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState(null);
   const [uploadResult, setUploadResult] = useState(null);
+  const [selectedTeams, setSelectedTeams] = useState([]);
 
   // Notice management state
   const [noticeModalOpen, setNoticeModalOpen] = useState(false);
@@ -78,17 +79,25 @@ export default function AdminDashboard() {
     }
   }, [isAuthenticated, authLoading, router]);
 
+  // Debounced search effect
   useEffect(() => {
-    if (isAuthenticated) {
-      if (activeView === "teams") {
+    if (isAuthenticated && (activeView === "teams" || activeView === "folders")) {
+      const debounceTimer = setTimeout(() => {
         fetchTeams();
-      } else if (activeView === "notices") {
-        fetchNotices();
-      } else if (activeView === "folders") {
-        fetchTeams();
-      }
+      }, 300); // 300ms debounce delay
+
+      return () => clearTimeout(debounceTimer);
     }
   }, [isAuthenticated, activeView, page, limit, searchTerm]);
+
+  // Separate effect for non-search related fetches
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (activeView === "notices") {
+        fetchNotices();
+      }
+    }
+  }, [isAuthenticated, activeView]);
 
   const fetchTeams = async () => {
     try {
@@ -158,23 +167,59 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleBulkDelete = async (teamIds) => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch('/api/admin/teams/bulk-delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ teamIds })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Successfully deleted ${data.data.deletedCount} teams!`);
+        setSelectedTeams([]); // Clear selection
+        fetchTeams(); // Refresh teams list
+      } else {
+        toast.error(data.message || "Failed to delete teams");
+      }
+    } catch (error) {
+      console.error("Bulk delete error:", error);
+      toast.error("Failed to delete teams");
+    }
+  };
+
   const handleEditTeam = (team) => {
     setEditingTeam({ ...team });
     setEditModalOpen(true);
   };
 
-  const handleUpdateTeam = async () => {
-    if (!editingTeam) return;
+  const handleUpdateTeam = async (teamData = null) => {
+    const teamToUpdate = teamData || editingTeam;
+    if (!teamToUpdate) return;
 
     try {
+      setIsLoading(true);
       const token = localStorage.getItem("adminToken");
-      const response = await fetch(`/api/admin/teams/${editingTeam.teamID}`, {
+      
+      // Prepare the update data
+      const updateData = {
+        ...teamToUpdate,
+        totalMembers: teamToUpdate.members?.length || teamToUpdate.totalMembers || 1
+      };
+
+      const response = await fetch(`/api/admin/teams/${teamToUpdate.teamID}`, {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(editingTeam),
+        body: JSON.stringify(updateData),
       });
 
       const data = await response.json();
@@ -182,13 +227,16 @@ export default function AdminDashboard() {
       if (data.success) {
         toast.success("Team updated successfully!");
         setEditModalOpen(false);
-        fetchTeams();
+        setEditingTeam(null);
+        fetchTeams(); // Refresh the teams list
       } else {
         toast.error(data.message || "Failed to update team");
       }
     } catch (error) {
       console.error("Update team error:", error);
       toast.error("Failed to update team");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -505,6 +553,9 @@ export default function AdminDashboard() {
               editingTeam={editingTeam}
               setEditingTeam={setEditingTeam}
               handleUpdateTeam={handleUpdateTeam}
+              selectedTeams={selectedTeams}
+              setSelectedTeams={setSelectedTeams}
+              handleBulkDelete={handleBulkDelete}
             />
           )}
           

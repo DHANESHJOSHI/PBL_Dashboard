@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, Trash2 } from "lucide-react";
 import UploadResultAlert from "./UploadResultAlert";
 import TeamRegistrationForm from "./TeamRegistrationForm";
 import TeamsTable from "./TeamsTable";
@@ -29,7 +29,10 @@ export default function TeamsView({
   setEditModalOpen,
   editingTeam,
   setEditingTeam,
-  handleUpdateTeam
+  handleUpdateTeam,
+  selectedTeams,
+  setSelectedTeams,
+  handleBulkDelete
 }) {
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -55,7 +58,7 @@ export default function TeamsView({
             variant="outline"
             className="flex items-center gap-2 rounded-xl border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-md"
           >
-            <Upload className="h-4 w-4" />
+          <Upload className="h-4 w-4" />
             {isLoading ? "Uploading..." : "Upload CSV/Excel"}
           </Button>
         </div>
@@ -88,6 +91,9 @@ export default function TeamsView({
         isLoading={isLoading}
         handleEditTeam={handleEditTeam}
         handleDeleteTeam={handleDeleteTeam}
+        selectedTeams={selectedTeams}
+        setSelectedTeams={setSelectedTeams}
+        handleBulkDelete={handleBulkDelete}
       />
 
       {/* Edit Team Modal */}

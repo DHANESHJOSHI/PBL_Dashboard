@@ -11,6 +11,7 @@ import Footer from "@/components/team/Footer"
 import Loading from "@/components/team/Loading"
 import Error from "@/components/team/Error"
 
+
 export default function TeamDashboard() {
   const router = useRouter()
   const [teamData, setTeamData] = useState(null)
@@ -22,6 +23,7 @@ export default function TeamDashboard() {
   const [popupOpen, setPopupOpen] = useState(false)
   const [popupType, setPopupType] = useState("")
   const [currentMemberIndex, setCurrentMemberIndex] = useState(null)
+
 
   useEffect(() => {
     const teamLoggedIn = localStorage.getItem("teamLoggedIn")

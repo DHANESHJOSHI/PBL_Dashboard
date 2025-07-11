@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { writeFile, mkdir } from "fs/promises"
 import { join } from "path"
-import { createApiResponse } from "@/lib/db-utils"
+import { createResponse } from "@/lib/utils"
 import { verifyToken } from "@/lib/auth"
 
 export async function POST(request) {
@@ -9,14 +9,14 @@ export async function POST(request) {
     // Check authorization
     const authHeader = request.headers.get("authorization")
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json(createApiResponse(false, "Authorization required"), { status: 401 })
+      return NextResponse.json(createResponse(false, "Authorization required"), { status: 401 })
     }
 
     const token = authHeader.substring(7)
     const decoded = verifyToken(token)
 
     if (!decoded) {
-      return NextResponse.json(createApiResponse(false, "Invalid token"), { status: 401 })
+      return NextResponse.json(createResponse(false, "Invalid token"), { status: 401 })
     }
 
     const formData = await request.formData()
@@ -26,11 +26,11 @@ export async function POST(request) {
     const memberEmail = formData.get("memberEmail")
 
     if (!file) {
-      return NextResponse.json(createApiResponse(false, "No file uploaded"), { status: 400 })
+      return NextResponse.json(createResponse(false, "No file uploaded"), { status: 400 })
     }
 
     if (!fileType || !teamID || !memberEmail) {
-      return NextResponse.json(createApiResponse(false, "Missing required parameters"), { status: 400 })
+      return NextResponse.json(createResponse(false, "Missing required parameters"), { status: 400 })
     }
 
     // Validate file type
@@ -43,7 +43,7 @@ export async function POST(request) {
     const fileExtension = fileName.substring(fileName.lastIndexOf("."))
 
     if (!allowedTypes[fileType]?.includes(fileExtension)) {
-      return NextResponse.json(createApiResponse(false, `Invalid file type for ${fileType}`), { status: 400 })
+      return NextResponse.json(createResponse(false, `Invalid file type for ${fileType}`), { status: 400 })
     }
 
     // Create upload directory
@@ -65,7 +65,7 @@ export async function POST(request) {
     const fileUrl = `/uploads/${teamID}/${newFileName}`
 
     return NextResponse.json(
-      createApiResponse(true, "File uploaded successfully", {
+      createResponse(true, "File uploaded successfully", {
         fileName: newFileName,
         fileUrl,
         fileType,
@@ -74,6 +74,6 @@ export async function POST(request) {
     )
   } catch (error) {
     console.error("File upload error:", error)
-    return NextResponse.json(createApiResponse(false, "File upload failed"), { status: 500 })
+    return NextResponse.json(createResponse(false, "File upload failed"), { status: 500 })
   }
 }

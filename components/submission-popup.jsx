@@ -10,12 +10,10 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
   const [subCategory, setSubCategory] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  const conceptNoteCategories = [
-    { value: "Problem_Statement", label: "Problem Statement" },
-    { value: "Solution_Approach", label: "Solution Approach" },
-    { value: "Technical_Architecture", label: "Technical Architecture" },
-    { value: "Implementation_Plan", label: "Implementation Plan" },
-    { value: "Team_Roles", label: "Team Roles" }
+  const finalDeliverableCategories = [
+    { value: "Screenshots", label: "Screenshots" },
+    { value: "Codes", label: "Codes" },
+    { value: "Presentation", label: "Presentation" }
   ];
 
   const handleFileChange = (e) => {
@@ -63,8 +61,8 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
       return;
     }
 
-    if (type === "conceptNote" && !subCategory) {
-      toast.error("Please select a concept note category");
+    if (type === "finalDeliverable" && !subCategory) {
+      toast.error("Please select a deliverable category");
       return;
     }
 
@@ -189,9 +187,9 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
       case "resume":
         return "Upload your resume and provide your LinkedIn profile link";
       case "conceptNote":
-        return "Upload your concept note document and select the appropriate category";
+        return "Upload your concept note document";
       case "finalDeliverable":
-        return "Upload your final project deliverable";
+        return "Upload your final project deliverable and select category";
       default:
         return "Select a file to upload";
     }
@@ -234,10 +232,10 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Concept Note Category Selection */}
-          {type === "conceptNote" && (
+          {type === "finalDeliverable" && (
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
-                Concept Note Category *
+                Category *
               </label>
               <select
                 value={subCategory}
@@ -246,13 +244,16 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
                 disabled={isUploading}
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:opacity-50"
               >
-                <option value="">Select a category</option>
-                {conceptNoteCategories.map((category) => (
+                <option value="">Select a category...</option>
+                {finalDeliverableCategories.map((category) => (
                   <option key={category.value} value={category.value}>
                     {category.label}
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-gray-500">
+                Screenshots: Project interface images • Codes: Source code files • Presentation: Project slides
+              </p>
             </div>
           )}
 
@@ -331,7 +332,7 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
             </button>
             <button
               type="submit"
-              disabled={isUploading || !file}
+              disabled={isUploading || !file || (type === "finalDeliverable" && !subCategory) || (type === "resume" && !linkedinLink.trim())}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isUploading ? (
