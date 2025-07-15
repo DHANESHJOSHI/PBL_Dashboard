@@ -121,16 +121,16 @@ export default function HomePage() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 lg:mb-12">
           <div className="flex items-center mb-4 lg:mb-0">
              <Image
-              src="/csrbox.png"
+              src="/CSR_white.png"
               alt="CSR IBM Logo"
-              width={300} // add your desired width
+              width={200} // add your desired width
               height={100} // add your desired height
             />
           </div>
            <Image
-              src="/ibm.png"
+              src="/CSR_IBM_logo_PNG-04.png"
               alt="CSR IBM Logo"
-              width={300} // add your desired width
+              width={200} // add your desired width
               height={100} // add your desired height
             />
         </div>
