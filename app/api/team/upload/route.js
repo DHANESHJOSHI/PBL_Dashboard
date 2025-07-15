@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken } from "@/lib/jwt";
 import connectDB from "@/lib/mongodb";
 import Team from "@/models/Team";
 import { getDriveClient, uploadToTeamFolder } from "@/lib/gdrive-utils";

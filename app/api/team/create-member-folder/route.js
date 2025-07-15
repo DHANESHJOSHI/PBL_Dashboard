@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createResponse } from "@/lib/utils";
-import { requireTeamAuth } from "@/middleware/auth";
+import { requireTeam } from "@/middleware/auth";
 import connectDB from "@/lib/mongodb";
 import Team from "@/models/Team";
 import { getDriveClient } from "@/lib/gdrive-utils";
@@ -143,4 +143,4 @@ async function postHandler(request) {
   }
 }
 
-export const POST = requireTeamAuth(postHandler);
+export const POST = requireTeam(postHandler);
