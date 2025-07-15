@@ -121,9 +121,79 @@ export default function TeamDashboard() {
       return
     }
     
-    setCurrentMemberIndex(memberIndex)
-    setPopupType(type)
-    setPopupOpen(true)
+    const member = teamData.members[memberIndex]
+    
+    if (type === "certificate") {
+      // Check if member folder exists by index, if not create it
+      if (teamData.folderStructure && teamData.folderStructure.memberFolders && teamData.folderStructure.memberFolders[memberIndex]) {
+        const memberFolder = teamData.folderStructure.memberFolders[memberIndex]
+        if (memberFolder.certificateFolderId) {
+          const driveLink = `https://drive.google.com/drive/folders/${memberFolder.certificateFolderId}`
+          window.open(driveLink, '_blank')
+        } else {
+          toast.error("Certificate folder not found. Please contact admin.")
+        }
+      } else {
+        // Create member folder and redirect
+        handleCreateMemberFolder(memberIndex, type)
+      }
+    } else if (type === "resume") {
+      // Check if member folder exists by index, if not create it
+      if (teamData.folderStructure && teamData.folderStructure.memberFolders && teamData.folderStructure.memberFolders[memberIndex]) {
+        const memberFolder = teamData.folderStructure.memberFolders[memberIndex]
+        if (memberFolder.resumeFolderId) {
+          const driveLink = `https://drive.google.com/drive/folders/${memberFolder.resumeFolderId}`
+          window.open(driveLink, '_blank')
+        } else {
+          toast.error("Resume folder not found. Please contact admin.")
+        }
+      } else {
+        // Create member folder and redirect
+        handleCreateMemberFolder(memberIndex, type)
+      }
+    }
+  }
+
+  const handleCreateMemberFolder = async (memberIndex, type) => {
+    try {
+      const token = localStorage.getItem("teamToken")
+      const response = await fetch(`/api/team/create-member-folder`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          teamID: teamData.teamID,
+          memberIndex: memberIndex
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Refresh team data to get updated folder structure
+        await fetchTeamData(teamData.teamID)
+        toast.success("Member folder created successfully!")
+        
+        // Now redirect to the appropriate folder
+        const updatedTeamData = { ...teamData, folderStructure: data.data.folderStructure }
+        const memberFolder = updatedTeamData.folderStructure.memberFolders[memberIndex]
+        
+        if (type === "certificate" && memberFolder.certificateFolderId) {
+          const driveLink = `https://drive.google.com/drive/folders/${memberFolder.certificateFolderId}`
+          window.open(driveLink, '_blank')
+        } else if (type === "resume" && memberFolder.resumeFolderId) {
+          const driveLink = `https://drive.google.com/drive/folders/${memberFolder.resumeFolderId}`
+          window.open(driveLink, '_blank')
+        }
+      } else {
+        toast.error("Failed to create member folder. Please contact admin.")
+      }
+    } catch (error) {
+      console.error("Create member folder error:", error)
+      toast.error("Failed to create member folder. Please contact admin.")
+    }
   }
 
   const handleSubmissionSave = (submissionData) => {
@@ -151,9 +221,13 @@ export default function TeamDashboard() {
       return
     }
 
-    setPopupType("conceptNote")
-    setCurrentMemberIndex(null)
-    setPopupOpen(true)
+    // Redirect to drive link for concept note folder
+    if (teamData.folderStructure && teamData.folderStructure.conceptNoteFolderId) {
+      const driveLink = `https://drive.google.com/drive/folders/${teamData.folderStructure.conceptNoteFolderId}`
+      window.open(driveLink, '_blank')
+    } else {
+      toast.error("Concept note folder not found. Please contact admin.")
+    }
   }
 
   const handleSubmitFinalDeliverable = () => {
@@ -168,9 +242,13 @@ export default function TeamDashboard() {
       return
     }
 
-    setPopupType("finalDeliverable")
-    setCurrentMemberIndex(null)
-    setPopupOpen(true)
+    // Redirect to drive link for final deliverable folder
+    if (teamData.folderStructure && teamData.folderStructure.finalDeliverableFolderId) {
+      const driveLink = `https://drive.google.com/drive/folders/${teamData.folderStructure.finalDeliverableFolderId}`
+      window.open(driveLink, '_blank')
+    } else {
+      toast.error("Final deliverable folder not found. Please contact admin.")
+    }
   }
 
   if (isLoading) {

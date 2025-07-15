@@ -32,7 +32,9 @@ export default function TeamsView({
   handleUpdateTeam,
   selectedTeams,
   setSelectedTeams,
-  handleBulkDelete
+  handleBulkDelete,
+  handleExportTeams,
+  handleMarksProgressUpload
 }) {
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -94,6 +96,8 @@ export default function TeamsView({
         selectedTeams={selectedTeams}
         setSelectedTeams={setSelectedTeams}
         handleBulkDelete={handleBulkDelete}
+        handleExportTeams={handleExportTeams}
+        handleMarksProgressUpload={handleMarksProgressUpload}
       />
 
       {/* Edit Team Modal */}

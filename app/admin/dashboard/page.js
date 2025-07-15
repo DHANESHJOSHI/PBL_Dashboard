@@ -68,8 +68,81 @@ export default function AdminDashboard() {
     },
   });
 
+  // Export and upload state
+  const [isExporting, setIsExporting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
   // Notice form state
   const [noticeForm, setNoticeForm] = useState({ title: "", content: "" });
+
+  // Export teams functionality
+  const handleExportTeams = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch('/api/admin/export-teams', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `teams_export_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success('Teams exported successfully!');
+      } else {
+        throw new Error('Export failed');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export teams');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Upload marks and progress functionality
+  const handleMarksProgressUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/admin/upload-marks-progress', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Marks and progress updated successfully! ${data.data.updated} records updated.`);
+        fetchTeams(); // Refresh the teams data
+      } else {
+        toast.error(data.message || 'Failed to update marks and progress');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload marks and progress');
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -556,6 +629,8 @@ export default function AdminDashboard() {
               selectedTeams={selectedTeams}
               setSelectedTeams={setSelectedTeams}
               handleBulkDelete={handleBulkDelete}
+              handleExportTeams={handleExportTeams}
+              handleMarksProgressUpload={handleMarksProgressUpload}
             />
           )}
           

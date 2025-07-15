@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Edit, Trash2, Loader2, Users, ChevronDown, ChevronRight, User, Mail, Award, FileText, Link, X, AlertTriangle } from "lucide-react";
+import { Search, Edit, Trash2, Loader2, Users, ChevronDown, ChevronRight, User, Mail, Award, FileText, Link, X, AlertTriangle, Download, Upload } from "lucide-react";
 
 export default function TeamsTable({
   teams,
@@ -44,7 +44,9 @@ export default function TeamsTable({
   handleDeleteTeam,
   selectedTeams,
   setSelectedTeams,
-  handleBulkDelete
+  handleBulkDelete,
+  handleExportTeams,
+  handleMarksProgressUpload
 }) {
   const [expandedTeams, setExpandedTeams] = useState(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
@@ -145,7 +147,36 @@ export default function TeamsTable({
               </Button>
             </div>
           )}
+          
+          {/* Export and Upload Controls */}
           <div className="flex flex-col lg:flex-row gap-4 w-full lg:w-auto">
+            <div className="flex gap-2">
+              <Button
+                onClick={handleExportTeams}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-xl px-4 py-2"
+              >
+                <Download className="h-4 w-4" />
+                Export Teams
+              </Button>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleMarksProgressUpload}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  id="marks-upload"
+                />
+                <Button
+                  asChild
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2"
+                >
+                  <label htmlFor="marks-upload" className="cursor-pointer">
+                    <Upload className="h-4 w-4" />
+                    Upload Marks
+                  </label>
+                </Button>
+              </div>
+            </div>
             <div className="relative w-full lg:w-80">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input

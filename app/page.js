@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronDown } from "lucide-react"
-
+import Image from "next/image"
 export default function HomePage() {
   const [email, setEmail] = useState("")
   const [collegeId, setCollegeId] = useState("")
@@ -120,21 +120,25 @@ export default function HomePage() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 lg:mb-12">
           <div className="flex items-center mb-4 lg:mb-0">
-            <div className="bg-white rounded-xl p-3 shadow-lg">
-              <div className="text-blue-800 font-bold text-lg">CSRBOX</div>
-              <div className="text-blue-600 text-xs">Doing Good in a Better Way</div>
-            </div>
+             <Image
+              src="/csrbox.png"
+              alt="CSR IBM Logo"
+              width={300} // add your desired width
+              height={100} // add your desired height
+            />
           </div>
-          <div className="text-white text-right">
-            <div className="text-sm lg:text-base font-medium opacity-90">In collaboration with</div>
-            <div className="text-xl lg:text-2xl font-bold">IBM SkillsBuild</div>
-          </div>
+           <Image
+              src="/ibm.png"
+              alt="CSR IBM Logo"
+              width={300} // add your desired width
+              height={100} // add your desired height
+            />
         </div>
 
         {/* Main Content */}
         <div className="text-center text-white mb-8 lg:mb-12">
-          <div className="text-base lg:text-lg mb-2 italic font-light">Welcome to</div>
-          <div className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight">
+          <div className="text-base text-xl sm:text-3xl lg:text-2xl xl:text-4xl mb-2 italic font-light">Welcome to</div>
+          <div className="text-xl sm:text-3xl lg:text-2xl xl:text-4xl font-bold leading-tight">
             IBM SkillsBuild Summer Certificate Program 2025
           </div>
         </div>
@@ -198,13 +202,13 @@ export default function HomePage() {
                   className={`w-full px-4 lg:px-6 py-3 lg:py-4 rounded-xl lg:rounded-2xl border-2 bg-transparent text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:bg-white/10 transition-all duration-200 text-sm lg:text-base ${
                     errors.email ? 'border-red-400' : 'border-white focus:border-blue-300'
                   }`}
-                  placeholder="yourname@gmail.com"
+                  placeholder="Enter Your Registered Email ID"
                   required
                 />
                 {errors.email && (
                   <p className="mt-2 text-sm text-red-300">{errors.email}</p>
                 )}
-                <p className="mt-1 text-xs text-white/70">Only Gmail addresses are accepted</p>
+                {/* <p className="mt-1 text-xs text-white/70">Only Gmail addresses are accepted</p> */}
               </div>
 
               <div>

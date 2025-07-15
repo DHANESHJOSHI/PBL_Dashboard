@@ -133,9 +133,8 @@ export default function AdminLogin() {
             <br />
             Password: admin123
           </p>
-          <p className="text-xs text-gray-500 text-center mt-2">
-            Note: Only Gmail addresses are accepted
-          </p>
+          {/* <p className="text-xs text-gray-500 text-center mt-2">
+          </p> */}
         </div>
 
         <div className="mt-4 text-center">
