@@ -13,6 +13,7 @@ export default function Header() {
                 width={200} // add your desired width
                 height={100} // add your desired height
               />
+              
           </div>
           <Image
             src="/ibm.png"
