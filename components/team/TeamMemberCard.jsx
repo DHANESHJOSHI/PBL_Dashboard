@@ -73,12 +73,12 @@ export default function TeamMemberCard({
             {member.learningPlanCompletion}
           </div>
         </div>
-        <div>
+        {/* <div>
           <label className="block text-blue-800 font-semibold mb-2 text-sm lg:text-base">Current Marks :</label>
           <div className="text-gray-700 px-3 lg:px-4 py-2 lg:py-3 bg-gray-100 rounded-xl border border-gray-300 cursor-not-allowed text-sm lg:text-base">
             {member.currentMarks}
           </div>
-        </div>
+        </div> */}
       </div>
 
       <div className="mb-4">

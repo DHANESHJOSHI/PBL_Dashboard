@@ -137,9 +137,9 @@ export default function HomePage() {
 
         {/* Main Content */}
         <div className="text-center text-white mb-8 lg:mb-12">
-          <div className="text-base text-xl sm:text-3xl lg:text-2xl xl:text-4xl mb-2 italic font-light">Welcome to</div>
+          {/* <div className="text-base text-xl sm:text-3xl lg:text-2xl xl:text-4xl mb-2 italic font-light"></div> Welcome to */}
           <div className="text-xl sm:text-3xl lg:text-2xl xl:text-4xl font-bold leading-tight">
-            IBM SkillsBuild Summer Certificate Program 2025
+            IBM Skillsbuild Project Based Learning Program 2025
           </div>
         </div>
 
@@ -179,7 +179,7 @@ export default function HomePage() {
           {/* Login Form */}
           <div className="lg:w-1/2 xl:w-3/5">
             <div className="text-white text-center mb-6 lg:mb-8">
-              <div className="text-lg lg:text-xl xl:text-2xl font-medium italic">
+              <div className="text-lg lg:text-xl xl:text-2xl font-medium bold">
                 LOGIN TO YOUR TEAM DASHBOARD
               </div>
             </div>
@@ -202,7 +202,7 @@ export default function HomePage() {
                   className={`w-full px-4 lg:px-6 py-3 lg:py-4 rounded-xl lg:rounded-2xl border-2 bg-transparent text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:bg-white/10 transition-all duration-200 text-sm lg:text-base ${
                     errors.email ? 'border-red-400' : 'border-white focus:border-blue-300'
                   }`}
-                  placeholder="Enter Your Registered Email ID"
+                  placeholder="Enter Your Registered GMAIL ID"
                   required
                 />
                 {errors.email && (
@@ -213,7 +213,7 @@ export default function HomePage() {
 
               <div>
                 <label className="block text-white font-medium mb-3 text-left text-sm lg:text-base">
-                  SELECT YOUR COLLEGE ID
+                  SELECT YOUR COLLEGE
                 </label>
                 <div className="relative">
                   <select
@@ -225,7 +225,7 @@ export default function HomePage() {
                     required
                   >
                     <option value="" disabled className="bg-blue-800 text-white">
-                      Select your college ID
+                      Select your college 
                     </option>
                     {colleges.map((college) => (
                       <option key={college.collegeId} value={college.collegeId} className="bg-blue-800 text-white">

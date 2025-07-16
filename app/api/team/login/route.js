@@ -67,6 +67,11 @@ export async function POST(request) {
 
         const folderStructure = await createTeamFolderStructure(drive, team, GlobalSettings);
 
+        // Fix for existing teams: ensure finalDeliverableFolderId is present
+        if (folderStructure && !folderStructure.finalDeliverableFolderId && folderStructure.mainFolders && folderStructure.mainFolders['Final_Deliverable']) {
+          folderStructure.finalDeliverableFolderId = folderStructure.mainFolders['Final_Deliverable'].id;
+        }
+
         // Update team with folder structure and enable submissions
         await Team.findOneAndUpdate(
           { teamID: team.teamID },
