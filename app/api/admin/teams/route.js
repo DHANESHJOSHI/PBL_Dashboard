@@ -21,6 +21,7 @@ async function getHandler(request) {
         $or: [
           { teamID: { $regex: search, $options: 'i' } },
           { teamName: { $regex: search, $options: 'i' } },
+          { internshipName: { $regex: search, $options: 'i' } },
           { collegeName: { $regex: search, $options: 'i' } },
           { leaderName: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
@@ -160,6 +161,7 @@ async function postHandler(request) {
     const newTeam = new Team({
       teamID,
       teamName: data.teamName || '',
+      internshipName: data.internshipName || '',
       collegeName: data.collegeName,
       collegePincode: data.collegePincode || '',
       collegeId: data.collegeId,

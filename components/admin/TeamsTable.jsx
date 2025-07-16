@@ -148,84 +148,113 @@ export default function TeamsTable({
             </div>
           )}
           
-          {/* Export and Upload Controls */}
-          <div className="flex flex-col lg:flex-row gap-4 w-full lg:w-auto">
-            <div className="flex gap-2">
-              <Button
-                onClick={handleExportTeams}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-xl px-4 py-2"
-              >
-                <Download className="h-4 w-4" />
-                Export Teams
-              </Button>
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleMarksProgressUpload}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  id="marks-upload"
-                />
-                <Button
-                  asChild
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2"
-                >
-                  <label htmlFor="marks-upload" className="cursor-pointer">
-                    <Upload className="h-4 w-4" />
-                    Upload Marks
-                  </label>
-                </Button>
-              </div>
-            </div>
-            <div className="relative w-full lg:w-80">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <Input
-                placeholder="Search teams, colleges, leaders..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  if (page !== 1) setPage(1);
-                }}
-                className="pl-12 pr-12 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl text-sm shadow-sm bg-white"
-              />
-              {searchTerm && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSearchTerm('');
+          {/* Search and Controls Section */}
+          <div className="flex flex-col space-y-4">
+            {/* Top Row: Search */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 z-10" />
+                <Input
+                  placeholder="Search teams, internships, colleges, leaders..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
                     if (page !== 1) setPage(1);
                   }}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-gray-100 rounded-full"
-                >
-                  <X className="h-4 w-4 text-gray-400" />
-                </Button>
-              )}
-              {isLoading && (
-                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 animate-spin text-blue-500" />
-              )}
+                  className="pl-12 pr-10 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl text-sm shadow-sm bg-white w-full"
+                />
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm('');
+                      if (page !== 1) setPage(1);
+                    }}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-gray-100 rounded-full z-10"
+                  >
+                    <X className="h-4 w-4 text-gray-400" />
+                  </Button>
+                )}
+                {isLoading && searchTerm && (
+                  <Loader2 className="absolute right-10 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
+                )}
+              </div>
+              
+              {/* Results count and clear all */}
+              <div className="flex items-center gap-4">
+                {searchTerm && (
+                  <div className="text-sm text-gray-600 whitespace-nowrap">
+                    {totalTeams} result{totalTeams !== 1 ? 's' : ''} found
+                  </div>
+                )}
+                {searchTerm && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm('');
+                      if (page !== 1) setPage(1);
+                    }}
+                    className="text-sm border-gray-300 hover:border-gray-400 rounded-lg"
+                  >
+                    Clear Search
+                  </Button>
+                )}
+              </div>
             </div>
-            
-            <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm">
-              <Label className="text-sm font-medium text-gray-700 whitespace-nowrap">Show:</Label>
-              <Select
-                value={limit.toString()}
-                onValueChange={(value) => {
-                  setLimit(Number(value));
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[70px] bg-transparent border-0 rounded-lg shadow-none">
-                  <SelectValue placeholder={limit} />
-                </SelectTrigger>
-                <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-lg z-50">
-                  <SelectItem value="10" className="hover:bg-blue-50 rounded-lg">10</SelectItem>
-                  <SelectItem value="25" className="hover:bg-blue-50 rounded-lg">25</SelectItem>
-                  <SelectItem value="50" className="hover:bg-blue-50 rounded-lg">50</SelectItem>
-                  <SelectItem value="100" className="hover:bg-blue-50 rounded-lg">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div> 
+
+            {/* Bottom Row: Export/Upload and Pagination Controls */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={handleExportTeams}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-xl px-4 py-2 text-sm"
+                >
+                  <Download className="h-4 w-4" />
+                  Export Teams
+                </Button>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleMarksProgressUpload}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    id="marks-upload"
+                  />
+                  <Button
+                    asChild
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2 text-sm"
+                  >
+                    <label htmlFor="marks-upload" className="cursor-pointer">
+                      <Upload className="h-4 w-4" />
+                      Upload Marks
+                    </label>
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm">
+                <Label className="text-sm font-medium text-gray-700 whitespace-nowrap">Show:</Label>
+                <Select
+                  value={limit.toString()}
+                  onValueChange={(value) => {
+                    setLimit(Number(value));
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[70px] bg-transparent border-0 rounded-lg shadow-none">
+                    <SelectValue placeholder={limit} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+                    <SelectItem value="10" className="hover:bg-blue-50 rounded-lg">10</SelectItem>
+                    <SelectItem value="25" className="hover:bg-blue-50 rounded-lg">25</SelectItem>
+                    <SelectItem value="50" className="hover:bg-blue-50 rounded-lg">50</SelectItem>
+                    <SelectItem value="100" className="hover:bg-blue-50 rounded-lg">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -260,6 +289,7 @@ export default function TeamsTable({
                     </div>
                   </TableHead>
                   <TableHead className="font-bold text-gray-800 text-sm py-4 hidden md:table-cell">Team Name</TableHead>
+                  <TableHead className="font-bold text-gray-800 text-sm py-4 hidden lg:table-cell">Internship</TableHead>
                   <TableHead className="font-bold text-gray-800 text-sm py-4 hidden lg:table-cell">College</TableHead>
                   <TableHead className="font-bold text-gray-800 text-sm py-4 hidden sm:table-cell">Leader</TableHead>
                   <TableHead className="font-bold text-gray-800 text-sm py-4">Members</TableHead>
@@ -308,6 +338,9 @@ export default function TeamsTable({
                         </TableCell>
                         <TableCell className="text-xs lg:text-sm hidden md:table-cell">
                           {team.teamName || "N/A"}
+                        </TableCell>
+                        <TableCell className="text-xs lg:text-sm hidden lg:table-cell">
+                          {team.internshipName || "N/A"}
                         </TableCell>
                         <TableCell className="text-xs lg:text-sm hidden lg:table-cell">
                           <div>

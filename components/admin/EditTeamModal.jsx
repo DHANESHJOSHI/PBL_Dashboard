@@ -195,6 +195,14 @@ export default function EditTeamModal({
                 />
               </div>
               <div className="space-y-2">
+                <Label>Internship Name</Label>
+                <Input
+                  value={localTeam.internshipName || ''}
+                  onChange={(e) => updateTeamField('internshipName', e.target.value)}
+                  className="rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>College Name</Label>
                 <Input
                   value={localTeam.collegeName || ''}

@@ -14,6 +14,7 @@ async function getHandler(request) {
     const csvHeaders = [
       'Team ID',
       'Team Name',
+      'Internship Name',
       'College Name',
       'College ID',
       'College Pincode',
@@ -54,6 +55,7 @@ async function getHandler(request) {
       const baseTeamData = [
         team.teamID || '',
         team.teamName || '',
+        team.internshipName || '',
         team.collegeName || '',
         team.collegeId || '',
         team.collegePincode || '',

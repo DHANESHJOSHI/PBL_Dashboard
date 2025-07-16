@@ -16,9 +16,17 @@ export default function WelcomeSection({
   
   return (
     <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 lg:p-8 mb-8">
-      <h1 className="text-2xl lg:text-3xl font-bold text-blue-800 text-center mb-8">
+      <h1 className="text-2xl lg:text-3xl font-bold text-blue-800 text-center mb-4">
         Hello! Team {teamData.teamName || "<<Team Name>>"}
       </h1>
+      
+      {teamData.internshipName && (
+        <div className="text-center mb-8">
+          <p className="text-lg font-medium text-blue-700">
+            {teamData.internshipName}
+          </p>
+        </div>
+      )}
 
       {!isLeader && (
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-xl mb-6">

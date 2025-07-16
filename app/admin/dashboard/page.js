@@ -51,6 +51,7 @@ export default function AdminDashboard() {
     step: 1,
     data: {
       teamName: "",
+      internshipName: "",
       collegeName: "",
       collegePincode: "",
       collegeId: "",
