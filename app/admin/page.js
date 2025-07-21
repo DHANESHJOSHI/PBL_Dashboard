@@ -125,7 +125,7 @@ export default function AdminLogin() {
           </button>
         </form>
 
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+        {/* <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-600 text-center">
             <strong>Demo Credentials:</strong>
             <br />
@@ -133,9 +133,9 @@ export default function AdminLogin() {
             <br />
             Password: admin123
           </p>
-          {/* <p className="text-xs text-gray-500 text-center mt-2">
-          </p> */}
-        </div>
+          <p className="text-xs text-gray-500 text-center mt-2">
+          </p>
+        </div> */}
 
         <div className="mt-4 text-center">
           <p className="text-xs text-gray-500">
