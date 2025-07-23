@@ -18,9 +18,7 @@ async function handler(request) {
     }
 
     const fileName = file.name.toLowerCase();
-    const isCSV = fileName.endsWith(".csv");
-
-    if (!isCSV) {
+    if (!fileName.endsWith(".csv")) {
       return NextResponse.json(
         createResponse(false, "Only CSV files are supported"),
         { status: 400 }
@@ -67,8 +65,8 @@ async function handler(request) {
         total: data.length,
         successful,
         failed,
-        errors: errors.slice(0, 50), // Return all or limited errors
-        processedTeams: processedTeams.slice(0, 10),
+        errors, // ✅ return ALL errors, not sliced
+        processedTeams,
       })
     );
   } catch (error) {

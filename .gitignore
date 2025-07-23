@@ -36,7 +36,7 @@ Thumbs.db
 *.pem
 *.key
 service-account.json
-
+google-credentials.json
 # Misc
 .next/cache/
 *.tgz
