@@ -227,11 +227,15 @@ export default function HomePage() {
                     <option value="" disabled className="bg-blue-800 text-white">
                       Select your college 
                     </option>
-                    {colleges.map((college) => (
-                      <option key={college.collegeId} value={college.collegeId} className="bg-blue-800 text-white">
-                        {college.collegeId} - {college.collegeName}
-                      </option>
-                    ))}
+                    {[...colleges]
+                        .sort((a, b) => Number(a.collegeId) - Number(b.collegeId))
+                        .map((college) => (
+                          <option key={college.collegeId} value={college.collegeId} className="bg-blue-800 text-white">
+                            {college.collegeId} - {college.collegeName}
+                          </option>
+                      ))}
+
+
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 lg:h-6 lg:w-6 text-white pointer-events-none" />
                 </div>
