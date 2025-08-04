@@ -165,12 +165,69 @@ async function processBatch(data) {
       });
 
       if (exists) {
-        failed++;
-        errors.push({
-          row: rows[0],
-          email: members[0]?.email || "-",
-          error: `Team ${teamId} already exists`,
-        });
+        // Team exists, check if we need to add new members
+        let membersAdded = 0;
+        let membersSkipped = 0;
+        
+        for (const newMember of members) {
+          // Check if member email already exists in the team
+          const emailExists = exists.members.some(existingMember => 
+            existingMember.email.toLowerCase() === newMember.email.toLowerCase()
+          );
+          
+          if (!emailExists) {
+            // Check for leader conflicts
+            const hasExistingLeader = exists.members.some(member => member.isLeader);
+            const isNewMemberLeader = newMember.isLeader;
+            
+            // If trying to add a new leader but team already has a leader, make the new member a regular member
+            const finalIsLeader = isNewMemberLeader && hasExistingLeader ? false : (newMember.isLeader || false);
+            
+            // Add new member to existing team
+            exists.members.push({
+              fullName: newMember.fullName,
+              email: newMember.email.toLowerCase(),
+              learningPlanCompletion: newMember.learningPlanCompletion || "0%",
+              currentMarks: newMember.currentMarks || "0",
+              certificateLink: newMember.certificateLink || "",
+              certificateFile: newMember.certificateFile || "",
+              resumeLink: newMember.resumeLink || "",
+              resumeFile: newMember.resumeFile || "",
+              linkedinLink: newMember.linkedinLink || "",
+              portfolioLink: newMember.portfolioLink || "",
+              githubLink: newMember.githubLink || "",
+              additionalNotes: newMember.additionalNotes || "",
+              isLeader: finalIsLeader,
+            });
+            membersAdded++;
+          } else {
+            membersSkipped++;
+          }
+        }
+        
+        if (membersAdded > 0) {
+          // Update total members count
+          exists.totalMembers = exists.members.length;
+          
+          // Save the updated team
+          await exists.save();
+          successful++;
+          
+          processedTeams.push({
+            teamID: teamId,
+            teamName: exists.teamName,
+            action: `Updated existing team: ${membersAdded} new member(s) added, ${membersSkipped} member(s) skipped (already exist)`,
+            members: exists.members.length,
+            rows: rows
+          });
+        } else {
+          // All members already exist, skip
+          errors.push({
+            row: rows[0],
+            email: members[0]?.email || "-",
+            error: `All members already exist in team ${teamId}`,
+          });
+        }
         continue;
       }
 
