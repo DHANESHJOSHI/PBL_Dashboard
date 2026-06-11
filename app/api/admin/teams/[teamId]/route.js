@@ -4,9 +4,10 @@ import { requireAdmin } from "@/middleware/auth";
 import connectDB from "@/lib/mongodb";
 import Team from "@/models/Team";
 
-async function getHandler(request, { params }) {
+async function getHandler(request, props) {
   try {
     await connectDB();
+    const params = await props.params;
     const { teamId } = params;
 
     const team = await Team.findOne({ teamID: teamId });
@@ -29,9 +30,10 @@ async function getHandler(request, { params }) {
   }
 }
 
-async function patchHandler(request, { params }) {
+async function patchHandler(request, props) {
   try {
     await connectDB();
+    const params = await props.params;
     const { teamId } = params;
     const updateData = await request.json();
 
@@ -83,9 +85,10 @@ async function patchHandler(request, { params }) {
   }
 }
 
-async function deleteHandler(request, { params }) {
+async function deleteHandler(request, props) {
   try {
     await connectDB();
+    const params = await props.params;
     const { teamId } = params;
 
     const deletedTeam = await Team.findOneAndDelete({ teamID: teamId });

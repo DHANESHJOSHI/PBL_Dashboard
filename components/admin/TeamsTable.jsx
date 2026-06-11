@@ -1,793 +1,411 @@
-import { useState } from "react";
+"use client";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Edit, Trash2, Loader2, Users, ChevronDown, ChevronRight, User, Mail, Award, FileText, Link, X, AlertTriangle, Download, Upload } from "lucide-react";
+import {
+  Search, Edit, Trash2, Loader2, Users, ChevronDown,
+  ChevronRight, User, Mail, Award, FileText, X,
+  AlertTriangle, Download, Upload, Building2, GraduationCap,
+} from "lucide-react";
+
+function ProgressMini({ label, value, color }) {
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <span className="text-[10px] text-gray-500 w-14 shrink-0">{label}</span>
+      <div className="flex-1 bg-gray-100 rounded-full h-1.5 min-w-0">
+        <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${value}%` }} />
+      </div>
+      <span className={`text-[10px] font-semibold w-7 text-right ${color.replace('bg-', 'text-')}`}>{value}%</span>
+    </div>
+  );
+}
 
 export default function TeamsTable({
-  teams,
-  totalTeams,
-  searchTerm,
-  setSearchTerm,
-  page,
-  setPage,
-  limit,
-  setLimit,
-  isLoading,
-  handleEditTeam,
-  handleDeleteTeam,
-  selectedTeams,
-  setSelectedTeams,
-  handleBulkDelete,
-  handleExportTeams,
-  handleMarksProgressUpload
+  teams, totalTeams, searchTerm, setSearchTerm,
+  page, setPage, limit, setLimit, isLoading,
+  handleEditTeam, handleDeleteTeam, selectedTeams, setSelectedTeams,
+  handleBulkDelete, handleExportTeams, handleMarksProgressUpload
 }) {
   const [expandedTeams, setExpandedTeams] = useState(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const toggleTeamExpansion = (teamId) => {
-    const newExpanded = new Set(expandedTeams);
-    if (newExpanded.has(teamId)) {
-      newExpanded.delete(teamId);
-    } else {
-      newExpanded.add(teamId);
-    }
-    setExpandedTeams(newExpanded);
+  const toggleExpand = (id) => {
+    const next = new Set(expandedTeams);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setExpandedTeams(next);
   };
 
-  // Remove client-side filtering since we're using API search
-  const filteredTeams = teams;
-
+  const safeSelected = selectedTeams || [];
+  const isAllSelected = teams.length > 0 && safeSelected.length === teams.length;
   const totalPages = Math.ceil(totalTeams / limit);
 
-  // Checkbox functionality
-  const safeSelectedTeams = selectedTeams || [];
-  
-  const handleSelectAll = (checked) => {
-    if (checked) {
-      setSelectedTeams?.(teams.map(team => team.teamID));
-    } else {
-      setSelectedTeams?.([]);
-    }
+  const calcLearning = (members) => {
+    if (!members?.length) return 0;
+    return Math.round(members.reduce((a, m) => a + parseInt(m.learningPlanCompletion?.replace('%','') || 0), 0) / members.length);
   };
-
-  const handleSelectTeam = (teamId, checked) => {
-    if (checked) {
-      setSelectedTeams?.([...safeSelectedTeams, teamId]);
-    } else {
-      setSelectedTeams?.(safeSelectedTeams.filter(id => id !== teamId));
-    }
+  const calcFiles = (members) => {
+    if (!members?.length) return 0;
+    return Math.round(((members.filter(m => m.certificateFile || m.certificateLink).length + members.filter(m => m.resumeFile || m.resumeLink).length) / (members.length * 2)) * 100);
   };
-
-  const isAllSelected = teams.length > 0 && safeSelectedTeams.length === teams.length;
-  const isIndeterminate = safeSelectedTeams.length > 0 && safeSelectedTeams.length < teams.length;
+  const calcOverall = (members) => Math.round((calcLearning(members) + calcFiles(members)) / 2);
 
   const handleBulkDeleteConfirm = async () => {
     setIsDeleting(true);
-    try {
-      await handleBulkDelete?.(safeSelectedTeams);
-      setShowBulkDeleteDialog(false);
-    } catch (error) {
-      console.error('Bulk delete error:', error);
-    } finally {
-      setIsDeleting(false);
-    }
+    try { await handleBulkDelete?.(safeSelected); setShowBulkDeleteDialog(false); }
+    catch (e) { console.error(e); }
+    finally { setIsDeleting(false); }
   };
 
   return (
-    <Card className="shadow-2xl border-0 rounded-3xl overflow-hidden bg-white">
-      <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200 p-6">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <CardTitle className="text-xl lg:text-2xl text-gray-900 flex items-center gap-3 font-bold">
-              <div className="p-2 bg-blue-100 rounded-xl">
-                <Users className="h-6 w-6 text-blue-600" />
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
+      {/* ── Table Toolbar ── */}
+      <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/60">
+        <div className="flex flex-col gap-3">
+
+          {/* Row 1: Title + Bulk delete */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-blue-600 rounded-lg">
+                <Users className="h-4 w-4 text-white" />
               </div>
               <div>
-                <span>Registered Teams</span>
-                <span className="ml-2 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-full font-medium">
-                  {totalTeams}
-                </span>
+                <h2 className="text-base font-semibold text-gray-900">Registered Teams</h2>
+                <p className="text-xs text-gray-500">{totalTeams.toLocaleString()} teams total</p>
               </div>
-            </CardTitle>
-            <p className="text-gray-600 text-sm mt-2 font-medium">
-              View and manage all registered teams with advanced controls
-            </p>
+            </div>
+            {safeSelected.length > 0 && (
+              <div className="flex items-center gap-3 px-3 py-1.5 bg-red-50 border border-red-200 rounded-xl">
+                <span className="text-xs font-medium text-red-700">{safeSelected.length} selected</span>
+                <button
+                  onClick={() => setShowBulkDeleteDialog(true)}
+                  className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 px-2 py-1 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" /> Delete
+                </button>
+                <button onClick={() => setSelectedTeams?.([])} className="text-red-400 hover:text-red-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
-          
-          {/* Bulk Actions Bar */}
-          {safeSelectedTeams.length > 0 && (
-            <div className="flex items-center gap-4 p-4 bg-red-50 border border-red-200 rounded-xl">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-red-700">
-                  {safeSelectedTeams.length} team{safeSelectedTeams.length > 1 ? 's' : ''} selected
-                </span>
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setShowBulkDeleteDialog(true)}
-                disabled={isDeleting}
-                className="flex items-center gap-2 rounded-xl hover:shadow-lg transition-all duration-200 bg-red-600 hover:bg-red-700 disabled:opacity-50"
-              >
-                {isDeleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-                {isDeleting ? 'Deleting...' : 'Delete Selected'}
-              </Button>
-            </div>
-          )}
-          
-          {/* Search and Controls Section */}
-          <div className="flex flex-col space-y-4">
-            {/* Top Row: Search */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 z-10" />
-                <Input
-                  placeholder="Search teams, internships, colleges, leaders..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    if (page !== 1) setPage(1);
-                  }}
-                  className="pl-12 pr-10 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl text-sm shadow-sm bg-white w-full"
-                />
-                {searchTerm && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSearchTerm('');
-                      if (page !== 1) setPage(1);
-                    }}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-gray-100 rounded-full z-10"
-                  >
-                    <X className="h-4 w-4 text-gray-400" />
-                  </Button>
-                )}
-                {isLoading && searchTerm && (
-                  <Loader2 className="absolute right-10 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
-                )}
-              </div>
-              
-              {/* Results count and clear all */}
-              <div className="flex items-center gap-4">
-                {searchTerm && (
-                  <div className="text-sm text-gray-600 whitespace-nowrap">
-                    {totalTeams} result{totalTeams !== 1 ? 's' : ''} found
-                  </div>
-                )}
-                {searchTerm && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearchTerm('');
-                      if (page !== 1) setPage(1);
-                    }}
-                    className="text-sm border-gray-300 hover:border-gray-400 rounded-lg"
-                  >
-                    Clear Search
-                  </Button>
-                )}
-              </div>
-            </div>
 
-            {/* Bottom Row: Export/Upload and Pagination Controls */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={handleExportTeams}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-xl px-4 py-2 text-sm"
-                >
-                  <Download className="h-4 w-4" />
-                  Export Teams
-                </Button>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleMarksProgressUpload}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    id="marks-upload"
-                  />
-                  <Button
-                    asChild
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-2 text-sm"
-                  >
-                    <label htmlFor="marks-upload" className="cursor-pointer">
-                      <Upload className="h-4 w-4" />
-                      Upload Marks
-                    </label>
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm">
-                <Label className="text-sm font-medium text-gray-700 whitespace-nowrap">Show:</Label>
-                <Select
-                  value={limit.toString()}
-                  onValueChange={(value) => {
-                    setLimit(Number(value));
-                    setPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[70px] bg-transparent border-0 rounded-lg shadow-none">
-                    <SelectValue placeholder={limit} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-lg z-50">
-                    <SelectItem value="10" className="hover:bg-blue-50 rounded-lg">10</SelectItem>
-                    <SelectItem value="25" className="hover:bg-blue-50 rounded-lg">25</SelectItem>
-                    <SelectItem value="50" className="hover:bg-blue-50 rounded-lg">50</SelectItem>
-                    <SelectItem value="100" className="hover:bg-blue-50 rounded-lg">100</SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* Row 2: Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search teams, internships, colleges, leaders..."
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); if (page !== 1) setPage(1); }}
+              className="pl-9 pr-8 h-9 border-gray-200 focus:border-blue-400 focus:ring-blue-400 rounded-xl text-sm bg-white"
+            />
+            {searchTerm && (
+              <button onClick={() => { setSearchTerm(''); setPage(1); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Row 3: Actions + Rows per page */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportTeams}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" /> Export
+              </button>
+              <div className="relative">
+                <input type="file" accept=".csv" onChange={handleMarksProgressUpload} className="absolute inset-0 opacity-0 cursor-pointer" id="marks-upload" />
+                <label htmlFor="marks-upload" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors cursor-pointer">
+                  <Upload className="h-3.5 w-3.5" /> Upload Marks
+                </label>
               </div>
             </div>
+            <div className="flex items-center gap-2 text-xs text-gray-600">
+              <span className="font-medium">Show:</span>
+              <select
+                value={limit}
+                onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                className="border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-50 outline-none cursor-pointer"
+              >
+                {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <span className="text-gray-400">per page</span>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-2 text-gray-600">Loading teams...</span>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table className="rounded-2xl overflow-hidden">
-              <TableHeader className="bg-gradient-to-r from-gray-50 to-slate-50 border-b-2 border-gray-200">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="font-bold text-gray-800 text-sm w-12 text-center py-4">
-                    <Checkbox
-                      checked={isAllSelected}
-                      onCheckedChange={handleSelectAll}
-                      className="mx-auto border-2 border-gray-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                    />
-                  </TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm w-12 text-center py-4">
-                    <div className="flex items-center justify-center">
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4">#</TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-blue-600" />
-                      Team ID
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4 hidden md:table-cell">Team Name</TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4 hidden lg:table-cell">Internship</TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4 hidden lg:table-cell">College</TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4 hidden sm:table-cell">Leader</TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4">Members</TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4 hidden xl:table-cell">Progress</TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4 hidden lg:table-cell">Created</TableHead>
-                  <TableHead className="font-bold text-gray-800 text-sm py-4 text-center">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTeams.map((team, index) => {
-                  const isExpanded = expandedTeams.has(team._id);
-                  return (
-                    <>
-                      <TableRow key={team._id} className="hover:bg-blue-50/50 transition-colors duration-200 border-b border-gray-100">
-                        <TableCell className="p-4 text-center">
-                          <Checkbox
-                            checked={safeSelectedTeams.includes(team.teamID)}
-                            onCheckedChange={(checked) => handleSelectTeam(team.teamID, checked)}
-                            className="border-2 border-gray-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                          />
-                        </TableCell>
-                        <TableCell className="p-4 text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleTeamExpansion(team._id)}
-                            className="w-8 h-8 p-0 hover:bg-blue-100 rounded-full transition-colors duration-200"
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="h-4 w-4 text-blue-600" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 text-gray-500" />
-                            )}
-                          </Button>
-                        </TableCell>
-                        <TableCell className="font-bold text-gray-700 text-sm px-4 py-4">
-                          <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full text-blue-700 font-bold">
-                            {(page - 1) * limit + index + 1}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-bold text-blue-700 text-sm px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                            {team.teamID}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs lg:text-sm hidden md:table-cell">
-                          {team.teamName || "N/A"}
-                        </TableCell>
-                        <TableCell className="text-xs lg:text-sm hidden lg:table-cell">
-                          {team.internshipName || "N/A"}
-                        </TableCell>
-                        <TableCell className="text-xs lg:text-sm hidden lg:table-cell">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {team.collegeName}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {team.collegeId}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs lg:text-sm hidden sm:table-cell">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {team.leaderName}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {team.email}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {team.members?.length || team.totalMembers} total
-                            </span>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
-                              {team.totalFemaleMembers} female
-                            </span>
-                          </div>
-                        </TableCell>
-                        
-                        {/* Progress Column */}
-                        <TableCell className="hidden xl:table-cell">
-                          {team.members && team.members.length > 0 ? (
-                            <div className="space-y-2 min-w-[120px]">
-                              {/* Learning Progress */}
-                              <div>
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="text-xs text-gray-600 font-medium">Learning</span>
-                                  <span className="text-xs font-semibold text-green-600">
-                                    {Math.round(
-                                      team.members.reduce((acc, member) => {
-                                        const completion = parseInt(member.learningPlanCompletion?.replace('%', '') || '0');
-                                        return acc + completion;
-                                      }, 0) / team.members.length
-                                    )}%
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                  <div 
-                                    className="bg-green-500 h-1.5 rounded-full transition-all duration-300" 
-                                    style={{ 
-                                      width: `${Math.round(
-                                        team.members.reduce((acc, member) => {
-                                          const completion = parseInt(member.learningPlanCompletion?.replace('%', '') || '0');
-                                          return acc + completion;
-                                        }, 0) / team.members.length
-                                      )}%` 
-                                    }}
-                                  ></div>
-                                </div>
-                              </div>
-                              
-                              {/* Files Progress */}
-                              <div>
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="text-xs text-gray-600 font-medium">Files</span>
-                                  <span className="text-xs font-semibold text-blue-600">
-                                    {Math.round(
-                                      ((team.members.filter(m => m.certificateFile || m.certificateLink).length + 
-                                        team.members.filter(m => m.resumeFile || m.resumeLink).length) / 
-                                       (team.members.length * 2)) * 100
-                                    )}%
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                  <div 
-                                    className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" 
-                                    style={{ 
-                                      width: `${Math.round(
-                                        ((team.members.filter(m => m.certificateFile || m.certificateLink).length + 
-                                          team.members.filter(m => m.resumeFile || m.resumeLink).length) / 
-                                         (team.members.length * 2)) * 100
-                                      )}%` 
-                                    }}
-                                  ></div>
-                                </div>
-                              </div>
-                              
-                              {/* Overall Progress */}
-                              <div>
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="text-xs text-gray-600 font-medium">Overall</span>
-                                  <span className="text-xs font-semibold text-purple-600">
-                                    {Math.round(
-                                      (
-                                        (team.members.reduce((acc, member) => {
-                                          const completion = parseInt(member.learningPlanCompletion?.replace('%', '') || '0');
-                                          return acc + completion;
-                                        }, 0) / team.members.length) +
-                                        ((team.members.filter(m => m.certificateFile || m.certificateLink).length + 
-                                          team.members.filter(m => m.resumeFile || m.resumeLink).length) / 
-                                         (team.members.length * 2)) * 100
-                                      ) / 2
-                                    )}%
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                  <div 
-                                    className="bg-purple-500 h-1.5 rounded-full transition-all duration-300" 
-                                    style={{ 
-                                      width: `${Math.round(
-                                        (
-                                          (team.members.reduce((acc, member) => {
-                                            const completion = parseInt(member.learningPlanCompletion?.replace('%', '') || '0');
-                                            return acc + completion;
-                                          }, 0) / team.members.length) +
-                                          ((team.members.filter(m => m.certificateFile || m.certificateLink).length + 
-                                            team.members.filter(m => m.resumeFile || m.resumeLink).length) / 
-                                           (team.members.length * 2)) * 100
-                                        ) / 2
-                                      )}%` 
-                                    }}
-                                  ></div>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="text-center text-gray-400">
-                              <div className="text-xs">No data</div>
-                              <div className="text-xs">available</div>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-gray-600 text-xs lg:text-sm hidden lg:table-cell">
-                          {new Date(team.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="flex flex-col sm:flex-row gap-1 lg:gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditTeam(team)}
-                            className="flex items-center gap-1 rounded-xl border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-md text-xs"
-                          >
-                            <Edit className="h-3 w-3" />
-                            <span className="hidden sm:inline">Edit</span>
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteTeam(team.teamID)}
-                            className="flex items-center gap-1 rounded-xl transition-all duration-200 hover:shadow-md text-xs"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                            <span className="hidden sm:inline">Delete</span>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                      
-                      {/* Expanded Members Row */}
-                      {isExpanded && (
-                        <TableRow key={`${team._id}-expanded`} className="bg-gray-50">
-                          <TableCell colSpan={11} className="p-4">
-                            <div className="bg-white rounded-lg border border-gray-200 p-4">
-                              {/* Team Progress Overview */}
-                              {team.members && team.members.length > 0 && (
-                                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <Award className="h-5 w-5 text-blue-600" />
-                                    <h4 className="font-semibold text-gray-900">Team Progress Overview</h4>
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {/* Learning Plan Progress */}
-                                    <div className="text-center">
-                                      <div className="text-2xl font-bold text-green-600">
-                                        {Math.round(
-                                          team.members.reduce((acc, member) => {
-                                            const completion = parseInt(member.learningPlanCompletion?.replace('%', '') || '0');
-                                            return acc + completion;
-                                          }, 0) / team.members.length
-                                        )}%
-                                      </div>
-                                      <div className="text-xs text-gray-600 font-medium">Avg. Learning Progress</div>
-                                    </div>
-                                    
-                                    {/* Average Marks */}
-                                    <div className="text-center">
-                                      <div className="text-2xl font-bold text-blue-600">
-                                        {Math.round(
-                                          team.members.reduce((acc, member) => {
-                                            return acc + parseInt(member.currentMarks || '0');
-                                          }, 0) / team.members.length
-                                        )}
-                                      </div>
-                                      <div className="text-xs text-gray-600 font-medium">Avg. Marks</div>
-                                    </div>
-                                    
-                                    {/* Certificate Completion */}
-                                    <div className="text-center">
-                                      <div className="text-2xl font-bold text-green-600">
-                                        {team.members.filter(m => m.certificateFile || m.certificateLink).length}/{team.members.length}
-                                      </div>
-                                      <div className="text-xs text-gray-600 font-medium">Certificates</div>
-                                    </div>
-                                    
-                                    {/* Resume Completion */}
-                                    <div className="text-center">
-                                      <div className="text-2xl font-bold text-purple-600">
-                                        {team.members.filter(m => m.resumeFile || m.resumeLink).length}/{team.members.length}
-                                      </div>
-                                      <div className="text-xs text-gray-600 font-medium">Resumes</div>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Progress Bars */}
-                                  <div className="mt-4 space-y-3">
-                                    {/* Learning Progress Bar */}
-                                    <div>
-                                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                        <span>Team Learning Progress</span>
-                                        <span>
-                                          {Math.round(
-                                            team.members.reduce((acc, member) => {
-                                              const completion = parseInt(member.learningPlanCompletion?.replace('%', '') || '0');
-                                              return acc + completion;
-                                            }, 0) / team.members.length
-                                          )}%
-                                        </span>
-                                      </div>
-                                      <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div 
-                                          className="bg-green-500 h-2 rounded-full" 
-                                          style={{ 
-                                            width: `${Math.round(
-                                              team.members.reduce((acc, member) => {
-                                                const completion = parseInt(member.learningPlanCompletion?.replace('%', '') || '0');
-                                                return acc + completion;
-                                              }, 0) / team.members.length
-                                            )}%` 
-                                          }}
-                                        ></div>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* File Completion Bar */}
-                                    <div>
-                                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                        <span>File Submissions</span>
-                                        <span>
-                                          {Math.round(
-                                            ((team.members.filter(m => m.certificateFile || m.certificateLink).length + 
-                                              team.members.filter(m => m.resumeFile || m.resumeLink).length) / 
-                                             (team.members.length * 2)) * 100
-                                          )}%
-                                        </span>
-                                      </div>
-                                      <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div 
-                                          className="bg-blue-500 h-2 rounded-full" 
-                                          style={{ 
-                                            width: `${Math.round(
-                                              ((team.members.filter(m => m.certificateFile || m.certificateLink).length + 
-                                                team.members.filter(m => m.resumeFile || m.resumeLink).length) / 
-                                               (team.members.length * 2)) * 100
-                                            )}%` 
-                                          }}
-                                        ></div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              <div className="flex items-center gap-2 mb-3">
-                                <Users className="h-4 w-4 text-blue-600" />
-                                <h4 className="font-semibold text-gray-900">Team Members ({team.members?.length || 0})</h4>
-                              </div>
-                              
-                              {team.members && team.members.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                  {team.members.map((member, memberIndex) => (
-                                    <div key={memberIndex} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                          <User className="h-4 w-4 text-blue-600" />
-                                          <div>
-                                            <div className="font-medium text-gray-900 text-sm">
-                                              {member.fullName || member.memberName}
-                                              {member.isLeader && (
-                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                  Leader
-                                                </span>
-                                              )}
-                                            </div>
-                                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                                              <Mail className="h-3 w-3" />
-                                              {member.email}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                      
-                                      <div className="space-y-2">
-                                        {/* Learning Plan Progress */}
-                                        <div className="flex items-center gap-2">
-                                          <Award className="h-3 w-3 text-green-600" />
-                                          <span className="text-xs text-gray-600">Progress:</span>
-                                          <span className="text-xs font-medium text-green-600">
-                                            {member.learningPlanCompletion || "0%"}
-                                          </span>
-                                        </div>
-                                        
-                                        {/* Current Marks */}
-                                        <div className="flex items-center gap-2">
-                                          <FileText className="h-3 w-3 text-blue-600" />
-                                          <span className="text-xs text-gray-600">Marks:</span>
-                                          <span className="text-xs font-medium text-blue-600">
-                                            {member.currentMarks || "0"}
-                                          </span>
-                                        </div>
-                                        
-                                        {/* Links and Files */}
-                                        <div className="flex flex-wrap gap-1 mt-2">
-                                          {(member.certificateFile || member.certificateLink) && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                              Certificate
-                                            </span>
-                                          )}
-                                          {(member.resumeFile || member.resumeLink) && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                              Resume
-                                            </span>
-                                          )}
-                                          {member.linkedinLink && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                              LinkedIn
-                                            </span>
-                                          )}
-                                          {member.portfolioLink && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                              Portfolio
-                                            </span>
-                                          )}
-                                          {member.githubLink && (
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                              GitHub
-                                            </span>
-                                          )}
-                                        </div>
-                                        
-                                        {/* Additional Notes */}
-                                        {member.additionalNotes && (
-                                          <div className="text-xs text-gray-600 mt-2 p-2 bg-white rounded border">
-                                            <strong>Notes:</strong> {member.additionalNotes}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="text-center py-6 text-gray-500">
-                                  <Users className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                                  <p className="text-sm">No member details available</p>
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-      <div className="flex flex-col sm:flex-row items-center justify-between px-4 lg:px-6 py-4 border-t gap-4">
-        <div className="text-sm text-gray-600">
-          Showing {Math.min((page - 1) * limit + 1, totalTeams)} to {Math.min(page * limit, totalTeams)} of {totalTeams} teams
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.max(p - 1, 1))}
-            disabled={page === 1}
-            className="rounded-xl border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-md"
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages}
-            className="rounded-xl border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-md"
-          >
-            Next
-          </Button>
         </div>
       </div>
-      
-      {/* Bulk Delete Confirmation Dialog */}
+
+      {/* ── Table ── */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16 gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <span className="text-sm text-gray-500">Loading teams...</span>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b-2 border-gray-100 bg-gray-50/80">
+                <th className="w-9 px-3 py-3 text-center">
+                  <Checkbox checked={isAllSelected} onCheckedChange={(c) => c ? setSelectedTeams?.(teams.map(t => t.teamID)) : setSelectedTeams?.([])} className="border-gray-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600" />
+                </th>
+                <th className="w-8 px-1 py-3" />
+                <th className="w-10 px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">#</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Internship</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">College</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Leader</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Members</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden xl:table-cell w-44">Progress</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell w-20">Date</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {teams.map((team, index) => {
+                const isExpanded = expandedTeams.has(team._id);
+                const learning = calcLearning(team.members);
+                const files = calcFiles(team.members);
+                const overall = calcOverall(team.members);
+                return (
+                  <React.Fragment key={team._id}>
+                    <tr className={`hover:bg-blue-50/40 transition-colors ${isExpanded ? 'bg-blue-50/20' : ''}`}>
+                      {/* Checkbox */}
+                      <td className="w-9 px-3 py-3 text-center">
+                        <Checkbox
+                          checked={safeSelected.includes(team.teamID)}
+                          onCheckedChange={(c) => c ? setSelectedTeams?.([...safeSelected, team.teamID]) : setSelectedTeams?.(safeSelected.filter(id => id !== team.teamID))}
+                          className="border-gray-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                        />
+                      </td>
+                      {/* Expand */}
+                      <td className="w-8 px-1 py-3 text-center">
+                        <button onClick={() => toggleExpand(team._id)} className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-blue-100 transition-colors">
+                          {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-blue-600" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                        </button>
+                      </td>
+                      {/* # */}
+                      <td className="w-10 px-2 py-3">
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+                          {(page - 1) * limit + index + 1}
+                        </span>
+                      </td>
+                      {/* Team */}
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-8 bg-blue-500 rounded-full shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-blue-700 truncate max-w-[160px]" title={team.teamID}>{team.teamID}</div>
+                            <div className="text-xs text-gray-600 font-medium truncate max-w-[160px]" title={team.teamName}>{team.teamName || '—'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      {/* Internship */}
+                      <td className="px-3 py-3 hidden md:table-cell">
+                        <span className="text-xs text-gray-700 font-medium truncate block max-w-[150px]" title={team.internshipName}>{team.internshipName || '—'}</span>
+                      </td>
+                      {/* College */}
+                      <td className="px-3 py-3 hidden lg:table-cell">
+                        <div className="flex items-start gap-1.5">
+                          <Building2 className="h-3 w-3 text-gray-400 mt-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-xs text-gray-700 font-medium truncate max-w-[160px]" title={team.collegeName}>{team.collegeName}</div>
+                            <div className="text-[10px] text-gray-400">ID: {team.collegeId}</div>
+                          </div>
+                        </div>
+                      </td>
+                      {/* Leader */}
+                      <td className="px-3 py-3 hidden sm:table-cell">
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-gray-800 truncate max-w-[130px]" title={team.leaderName}>{team.leaderName}</div>
+                          <div className="text-[10px] text-gray-400 truncate max-w-[130px]" title={team.email}>{team.email}</div>
+                        </div>
+                      </td>
+                      {/* Members */}
+                      <td className="px-3 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800">
+                            <Users className="h-2.5 w-2.5" />{team.members?.length || team.totalMembers}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-100 text-pink-800">
+                            ♀ {team.totalFemaleMembers}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Progress */}
+                      <td className="px-3 py-3 hidden xl:table-cell w-44">
+                        <div className="space-y-1.5">
+                          <ProgressMini label="Learning" value={learning} color="bg-emerald-500" />
+                          <ProgressMini label="Files" value={files} color="bg-blue-500" />
+                          <ProgressMini label="Overall" value={overall} color="bg-violet-500" />
+                        </div>
+                      </td>
+                      {/* Date */}
+                      <td className="px-3 py-3 hidden lg:table-cell w-20">
+                        <span className="text-xs text-gray-500">
+                          {new Date(team.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                        </span>
+                      </td>
+                      {/* Actions */}
+                      <td className="px-3 py-3 w-20">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleEditTeam(team)}
+                            title="Edit Team"
+                            className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTeam(team.teamID)}
+                            title="Delete Team"
+                            className="flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expanded Row */}
+                    {isExpanded && (
+                      <tr key={`${team._id}-exp`}>
+                        <td colSpan={11} className="px-5 py-4 bg-blue-50/30 border-t border-b border-blue-100">
+                          <div className="bg-white rounded-xl border border-blue-100 p-4 shadow-sm">
+                            {/* Summary Stats */}
+                            {team.members?.length > 0 && (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                                {[
+                                  { label: 'Avg. Learning', value: `${calcLearning(team.members)}%`, color: 'text-emerald-600' },
+                                  { label: 'Avg. Marks', value: Math.round(team.members.reduce((a, m) => a + parseInt(m.currentMarks || 0), 0) / team.members.length), color: 'text-blue-600' },
+                                  { label: 'Certificates', value: `${team.members.filter(m => m.certificateFile || m.certificateLink).length}/${team.members.length}`, color: 'text-emerald-600' },
+                                  { label: 'Resumes', value: `${team.members.filter(m => m.resumeFile || m.resumeLink).length}/${team.members.length}`, color: 'text-violet-600' },
+                                ].map(stat => (
+                                  <div key={stat.label} className="text-center">
+                                    <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>
+                                    <div className="text-[10px] text-gray-500 font-medium mt-0.5">{stat.label}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Members Grid */}
+                            <div className="flex items-center gap-2 mb-3">
+                              <Users className="h-4 w-4 text-blue-600" />
+                              <h4 className="text-sm font-semibold text-gray-800">Team Members ({team.members?.length || 0})</h4>
+                            </div>
+                            {team.members?.length > 0 ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                {team.members.map((member, mi) => (
+                                  <div key={member.email || mi} className="bg-gray-50 border border-gray-100 rounded-xl p-3">
+                                    <div className="flex items-start gap-2 mb-2">
+                                      <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                                        <User className="h-3.5 w-3.5 text-blue-600" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="text-xs font-semibold text-gray-800 truncate">
+                                          {member.fullName || member.memberName}
+                                          {member.isLeader && <span className="ml-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-bold rounded-full">LEADER</span>}
+                                        </div>
+                                        <div className="text-[10px] text-gray-500 truncate">{member.email}</div>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span className="text-gray-500 flex items-center gap-1"><Award className="h-2.5 w-2.5 text-emerald-500" />Progress</span>
+                                        <span className="font-semibold text-emerald-600">{member.learningPlanCompletion || '0%'}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between text-[10px]">
+                                        <span className="text-gray-500 flex items-center gap-1"><FileText className="h-2.5 w-2.5 text-blue-500" />Marks</span>
+                                        <span className="font-semibold text-blue-600">{member.currentMarks || '0'}</span>
+                                      </div>
+                                      <div className="flex flex-wrap gap-1 mt-1.5">
+                                        {(member.certificateFile || member.certificateLink) && <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-semibold rounded-full">Cert ✓</span>}
+                                        {(member.resumeFile || member.resumeLink) && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-semibold rounded-full">Resume ✓</span>}
+                                        {member.linkedinLink && <span className="px-1.5 py-0.5 bg-sky-100 text-sky-700 text-[9px] font-semibold rounded-full">LinkedIn</span>}
+                                        {member.githubLink && <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-[9px] font-semibold rounded-full">GitHub</span>}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6 text-gray-400 text-sm">No member details available</div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Pagination ── */}
+      <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/60">
+        <p className="text-xs text-gray-500">
+          Showing <span className="font-semibold text-gray-700">{Math.min((page-1)*limit+1, totalTeams)}</span>–<span className="font-semibold text-gray-700">{Math.min(page*limit, totalTeams)}</span> of <span className="font-semibold text-gray-700">{totalTeams.toLocaleString()}</span> teams
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(p-1,1))}
+            disabled={page === 1}
+            className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >← Prev</button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let p = i + 1;
+              if (totalPages > 5 && page > 3) p = page - 2 + i;
+              if (p > totalPages) return null;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`w-7 h-7 text-xs font-semibold rounded-lg transition-colors ${page === p ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 text-gray-600'}`}
+                >{p}</button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => setPage(p => Math.min(p+1, totalPages))}
+            disabled={page === totalPages}
+            className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >Next →</button>
+        </div>
+      </div>
+
+      {/* ── Bulk Delete Dialog ── */}
       <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
         <AlertDialogContent className="max-w-md bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
-              Confirm Bulk Delete
+              <AlertTriangle className="h-5 w-5" /> Confirm Bulk Delete
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600">
-              Are you sure you want to delete <span className="font-bold text-red-600">{safeSelectedTeams.length}</span> selected team{safeSelectedTeams.length > 1 ? 's' : ''}?
-              <br />
-              <span className="text-red-500 font-medium">This action cannot be undone.</span>
+              Delete <span className="font-bold text-red-600">{safeSelected.length}</span> team{safeSelected.length > 1 ? 's' : ''}?{' '}
+              <span className="text-red-500 font-medium">This cannot be undone.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel 
-              disabled={isDeleting}
-              className="rounded-xl"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleBulkDeleteConfirm}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 rounded-xl"
-            >
-              {isDeleting ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Deleting...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Delete Teams
-                </div>
-              )}
+            <AlertDialogCancel disabled={isDeleting} className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDeleteConfirm} disabled={isDeleting} className="bg-red-600 hover:bg-red-700 rounded-xl">
+              {isDeleting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Deleting...</> : <><Trash2 className="h-4 w-4 mr-2" />Delete Teams</>}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </div>
   );
 }

@@ -1,17 +1,33 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Search, X } from "lucide-react"
 import Image from "next/image"
+
 export default function HomePage() {
   const [email, setEmail] = useState("")
   const [collegeId, setCollegeId] = useState("")
+  const [selectedCollegeName, setSelectedCollegeName] = useState("")
   const [colleges, setColleges] = useState([])
   const [notices, setNotices] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState({})
+  const [isCollegeDropdownOpen, setIsCollegeDropdownOpen] = useState(false)
+  const [collegeSearch, setCollegeSearch] = useState("")
+  const dropdownRef = useRef(null)
+  const searchInputRef = useRef(null)
   const router = useRouter()
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsCollegeDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   useEffect(() => {
     fetchColleges()
@@ -215,29 +231,85 @@ export default function HomePage() {
                 <label className="block text-white font-medium mb-3 text-left text-sm lg:text-base">
                   SELECT YOUR COLLEGE
                 </label>
-                <div className="relative">
-                  <select
-                    value={collegeId}
-                    onChange={(e) => setCollegeId(e.target.value)}
-                    className={`w-full px-4 lg:px-6 py-3 lg:py-4 rounded-xl lg:rounded-2xl border-2 bg-blue-700/50 backdrop-blur-sm text-white focus:outline-none focus:bg-blue-700/70 appearance-none cursor-pointer transition-all duration-200 text-sm lg:text-base pr-12 ${
-                      errors.collegeId ? 'border-red-400' : 'border-white focus:border-blue-300'
+                <div className="relative" ref={dropdownRef}>
+                  <div
+                    onClick={() => {
+                      const next = !isCollegeDropdownOpen;
+                      setIsCollegeDropdownOpen(next);
+                      if (next) setTimeout(() => searchInputRef.current?.focus(), 50);
+                    }}
+                    className={`w-full px-4 lg:px-6 py-3 lg:py-4 rounded-xl lg:rounded-2xl border-2 bg-blue-700/50 backdrop-blur-sm text-white focus:outline-none focus:bg-blue-700/70 cursor-pointer transition-all duration-200 text-sm lg:text-base pr-12 flex items-center justify-between ${
+                      errors.collegeId ? 'border-red-400' : 'border-white hover:border-blue-300'
                     }`}
-                    required
                   >
-                    <option value="" disabled className="bg-blue-800 text-white">
-                      Select your college 
-                    </option>
-                    {[...colleges]
-                        .sort((a, b) => Number(a.collegeId) - Number(b.collegeId))
-                        .map((college) => (
-                          <option key={college.collegeId} value={college.collegeId} className="bg-blue-800 text-white">
-                            {college.collegeId} - {college.collegeName}
-                          </option>
-                      ))}
+                    <span className={`truncate ${!collegeId ? 'opacity-70' : ''}`}>
+                      {collegeId
+                        ? `${collegeId} - ${selectedCollegeName}`
+                        : 'Select your college'}
+                    </span>
+                    <ChevronDown className={`h-5 w-5 lg:h-6 lg:w-6 text-white transition-transform ${isCollegeDropdownOpen ? 'rotate-180' : ''}`} />
+                  </div>
 
-
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 lg:h-6 lg:w-6 text-white pointer-events-none" />
+                  {isCollegeDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-2 bg-blue-800 border border-blue-400 rounded-xl shadow-2xl overflow-hidden backdrop-blur-md">
+                      <div className="p-3 border-b border-blue-600 flex items-center bg-blue-900/50">
+                        <Search className="h-4 w-4 text-white/70 mr-2" />
+                        <input
+                          ref={searchInputRef}
+                          type="text"
+                          className="w-full bg-transparent text-white placeholder-white/50 focus:outline-none text-sm"
+                          placeholder="Search colleges..."
+                          value={collegeSearch}
+                          onChange={(e) => setCollegeSearch(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        {collegeSearch && (
+                          <X
+                            className="h-4 w-4 text-white/70 cursor-pointer hover:text-white"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setCollegeSearch("")
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div className="max-h-60 overflow-y-auto">
+                        {[...colleges]
+                          .sort((a, b) => Number(a.collegeId) - Number(b.collegeId))
+                          .filter((college) =>
+                            `${college.collegeId} ${college.collegeName}`
+                              .toLowerCase()
+                              .includes(collegeSearch.toLowerCase())
+                          )
+                          .map((college) => (
+                            <div
+                              key={`${college.collegeId}-${college.collegeName}`}
+                              className={`px-4 py-3 cursor-pointer text-sm text-white hover:bg-blue-600 transition-colors ${
+                                college.collegeId === collegeId && college.collegeName === selectedCollegeName ? 'bg-blue-600 font-medium' : ''
+                              }`}
+                              onClick={() => {
+                                setCollegeId(college.collegeId)
+                                setSelectedCollegeName(college.collegeName)
+                                setIsCollegeDropdownOpen(false)
+                                setCollegeSearch("")
+                                setErrors((prev) => ({ ...prev, collegeId: null }))
+                              }}
+                            >
+                              {college.collegeId} - {college.collegeName}
+                            </div>
+                          ))}
+                        {colleges.filter((college) =>
+                          `${college.collegeId} ${college.collegeName}`
+                            .toLowerCase()
+                            .includes(collegeSearch.toLowerCase())
+                        ).length === 0 && (
+                          <div className="px-4 py-3 text-sm text-white/70 text-center">
+                            No colleges found
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {errors.collegeId && (
                   <p className="mt-2 text-sm text-red-300">{errors.collegeId}</p>

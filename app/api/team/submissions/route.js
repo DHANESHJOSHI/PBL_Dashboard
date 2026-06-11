@@ -5,6 +5,8 @@ import Team from '@/models/Team';
 import GlobalSettings from '@/models/GlobalSettings';
 import { createResponse } from '@/lib/utils';
 import { requireTeam } from '@/middleware/auth';
+import Tesseract from 'tesseract.js';
+import pdfParse from 'pdf-parse';
 
 async function handler(request) {
   try {
@@ -12,7 +14,9 @@ async function handler(request) {
     await connectDB();
 
     const formData = await request.formData();
+    const submissionMethod = formData.get('submissionMethod') || 'file';
     const file = formData.get('file');
+    const driveLink = formData.get('driveLink');
     const teamId = formData.get('teamId');
     const memberIndex = formData.get('memberIndex');
     const submissionType = formData.get('submissionType');
@@ -21,18 +25,28 @@ async function handler(request) {
 
     console.log('Received form data:', {
       teamId,
+      submissionMethod,
       memberIndex,
       submissionType,
       subCategory,
       fileName: file?.name,
       fileSize: file?.size,
+      driveLink,
       hasLinkedinLink: !!linkedinLink
     });
 
     // Validate required fields
-    if (!teamId || !submissionType || !file) {
-      console.error('Missing required fields:', { teamId: !!teamId, submissionType: !!submissionType, file: !!file });
+    if (!teamId || !submissionType) {
+      console.error('Missing required fields:', { teamId: !!teamId, submissionType: !!submissionType });
       return NextResponse.json(createResponse(false, 'Missing required fields'), { status: 400 });
+    }
+
+    if (submissionMethod === 'file' && !file) {
+      return NextResponse.json(createResponse(false, 'Missing file upload'), { status: 400 });
+    }
+
+    if (submissionMethod === 'link' && !driveLink) {
+      return NextResponse.json(createResponse(false, 'Missing Google Drive link'), { status: 400 });
     }
 
     // Find team
@@ -50,27 +64,115 @@ async function handler(request) {
       return NextResponse.json(createResponse(false, 'Team folder structure not enabled. Please contact admin.'), { status: 400 });
     }
 
-    // Validate file size (10MB limit)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      console.error('File too large:', { size: file.size, maxSize });
-      return NextResponse.json(createResponse(false, 'File size must be less than 10MB'), { status: 400 });
-    }
+    let fileData = null;
 
-    // Validate file type
-    const allowedTypes = {
-      certificate: ['.pdf', '.jpg', '.jpeg', '.png'],
-      resume: ['.pdf', '.doc', '.docx'],
-      conceptNote: ['.pdf', '.doc', '.docx', '.ppt', '.pptx'],
-      finalDeliverable: ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.zip', '.rar']
-    };
+    if (submissionMethod === 'file') {
+      // Validate file size (10MB limit)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        console.error('File too large:', { size: file.size, maxSize });
+        return NextResponse.json(createResponse(false, 'File size must be less than 10MB'), { status: 400 });
+      }
 
-    const fileName = file.name.toLowerCase();
-    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
-    
-    if (!allowedTypes[submissionType]?.includes(fileExtension)) {
-      console.error('Invalid file type:', { submissionType, fileExtension, allowed: allowedTypes[submissionType] });
-      return NextResponse.json(createResponse(false, `Invalid file type for ${submissionType}. Allowed: ${allowedTypes[submissionType]?.join(', ')}`), { status: 400 });
+      // Validate file type
+      const allowedTypes = {
+        certificate: ['.pdf', '.jpg', '.jpeg', '.png'],
+        resume: ['.pdf', '.doc', '.docx'],
+        conceptNote: ['.pdf', '.doc', '.docx', '.ppt', '.pptx'],
+        finalDeliverable: ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.zip', '.rar']
+      };
+
+      const fileName = file.name.toLowerCase();
+      const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+      
+      if (!allowedTypes[submissionType]?.includes(fileExtension)) {
+        console.error('Invalid file type:', { submissionType, fileExtension, allowed: allowedTypes[submissionType] });
+        return NextResponse.json(createResponse(false, `Invalid file type for ${submissionType}. Allowed: ${allowedTypes[submissionType]?.join(', ')}`), { status: 400 });
+      }
+      
+      // Prepare file data
+      const buffer = await file.arrayBuffer();
+      fileData = {
+        originalname: file.name,
+        mimetype: file.type,
+        size: file.size,
+        buffer: Buffer.from(buffer),
+      };
+
+      console.log('Prepared file data:', {
+        originalname: fileData.originalname,
+        mimetype: fileData.mimetype,
+        size: fileData.size,
+        bufferLength: fileData.buffer.length
+      });
+      
+      if (submissionType === 'certificate') {
+        try {
+          console.log('Starting OCR validation for certificate...');
+          const memberData = team.members[parseInt(memberIndex)];
+          const memberName = memberData.fullName.toLowerCase();
+          
+          let extractedText = "";
+
+          if (fileExtension === '.pdf') {
+            const pdfData = await pdfParse(fileData.buffer);
+            extractedText = pdfData.text.toLowerCase();
+          } else {
+            const path = require('path');
+            const worker = await Tesseract.createWorker('eng', 1, {
+              cachePath: path.join(process.cwd(), 'tessdata')
+            });
+            const { data: { text } } = await worker.recognize(fileData.buffer);
+            await worker.terminate();
+            extractedText = text.toLowerCase();
+          }
+
+          console.log('Extracted text preview:', extractedText.substring(0, 100));
+
+          const firstName = memberName.split(' ')[0];
+          const nameMatch = extractedText.includes(firstName);
+          
+          const internshipName = team.internshipName ? team.internshipName.toLowerCase() : "";
+          const courseKeywords = internshipName.split(' ').filter(w => w.length > 3);
+          // Check if at least one keyword of the course is present
+          const courseMatch = courseKeywords.length === 0 || courseKeywords.some(kw => extractedText.includes(kw));
+          
+          if (!nameMatch && !courseMatch) {
+            fileData.certificateValidationStatus = "Flagged";
+            fileData.certificateValidationNotes = `Mismatch detected: Could not verify name ('${firstName}') or course.`;
+            console.log('OCR Validation: Flagged (Name and Course)');
+          } else if (!nameMatch) {
+            fileData.certificateValidationStatus = "Flagged";
+            fileData.certificateValidationNotes = `Name mismatch detected. Could not find '${firstName}' in certificate.`;
+            console.log('OCR Validation: Flagged (Name)');
+          } else if (!courseMatch) {
+            fileData.certificateValidationStatus = "Flagged";
+            fileData.certificateValidationNotes = `Course mismatch detected. Could not verify '${internshipName}' in certificate.`;
+            console.log('OCR Validation: Flagged (Course)');
+          } else {
+            fileData.certificateValidationStatus = "Valid";
+            fileData.certificateValidationNotes = "Validation passed.";
+            console.log('OCR Validation: Valid');
+          }
+        } catch (error) {
+          console.error("OCR Validation error:", error);
+          fileData.certificateValidationStatus = "Flagged";
+          fileData.certificateValidationNotes = "OCR validation failed or document unreadable.";
+        }
+      }
+    } else if (submissionMethod === 'link') {
+      // Access check for drive link
+      try {
+        const checkResponse = await fetch(driveLink, { method: 'GET', redirect: 'manual' });
+        // If it redirects to ServiceLogin or accounts.google.com, it's restricted
+        const location = checkResponse.headers.get('location') || '';
+        if (checkResponse.status === 401 || checkResponse.status === 403 || location.includes('ServiceLogin') || location.includes('accounts.google.com')) {
+          return NextResponse.json(createResponse(false, 'Your Drive link is restricted. Please change permissions to "Anyone with the link can view" and re-submit.'), { status: 400 });
+        }
+      } catch (err) {
+        // If fetch fails entirely, it might be an invalid URL
+        return NextResponse.json(createResponse(false, 'Could not verify the Drive link. Please ensure it is valid and publicly accessible.'), { status: 400 });
+      }
     }
 
     // Validate member index for member-specific submissions
@@ -87,22 +189,6 @@ async function handler(request) {
         return NextResponse.json(createResponse(false, 'Invalid member index'), { status: 400 });
       }
     }
-
-    // Prepare file data
-    const buffer = await file.arrayBuffer();
-    const fileData = {
-      originalname: file.name,
-      mimetype: file.type,
-      size: file.size,
-      buffer: Buffer.from(buffer),
-    };
-
-    console.log('Prepared file data:', {
-      originalname: fileData.originalname,
-      mimetype: fileData.mimetype,
-      size: fileData.size,
-      bufferLength: fileData.buffer.length
-    });
 
     // Ensure team has proper folder structure
     if (!team.folderStructure || !team.folderStructure.memberFolders) {
@@ -128,25 +214,37 @@ async function handler(request) {
       team.folderStructure = folderStructure;
     }
 
-    // Get Google Drive client and upload file
-    console.log('Getting Google Drive client...');
-    const drive = await getDriveClient();
-    
-    // Get GlobalSettings for shared drive configuration
-    const globalSettings = await GlobalSettings.findOne();
-    
-    console.log('Starting file upload to Google Drive...');
-    const uploadResult = await uploadToTeamFolder(
-      drive, 
-      team, 
-      fileData, 
-      submissionType, 
-      subCategory, 
-      memberIndex ? parseInt(memberIndex) : null,
-      globalSettings
-    );
+    let uploadResult;
+    if (submissionMethod === 'file') {
+      // Get Google Drive client and upload file
+      console.log('Getting Google Drive client...');
+      const drive = await getDriveClient();
+      
+      // Get GlobalSettings for shared drive configuration
+      const globalSettings = await GlobalSettings.findOne();
+      
+      console.log('Starting file upload to Google Drive...');
+      uploadResult = await uploadToTeamFolder(
+        drive, 
+        team, 
+        fileData, 
+        submissionType, 
+        subCategory, 
+        memberIndex ? parseInt(memberIndex) : null,
+        globalSettings
+      );
 
-    console.log('Upload successful:', uploadResult);
+      console.log('Upload successful:', uploadResult);
+    } else {
+      // Fake upload result for links
+      uploadResult = {
+        fileId: 'link-submission',
+        webViewLink: driveLink,
+        fileName: 'Google Drive Link',
+        folderPath: ''
+      };
+      console.log('Link submission recorded:', uploadResult);
+    }
 
     // Update team with folder structure if it was recreated
     if (team.folderStructure) {
@@ -188,6 +286,10 @@ async function handler(request) {
       if (submissionType === 'certificate') {
         updateData[`members.${memberIdx}.certificateFile`] = uploadResult.fileId;
         updateData[`members.${memberIdx}.certificateLink`] = uploadResult.webViewLink;
+        if (fileData?.certificateValidationStatus) {
+          updateData[`members.${memberIdx}.certificateValidationStatus`] = fileData.certificateValidationStatus;
+          updateData[`members.${memberIdx}.certificateValidationNotes`] = fileData.certificateValidationNotes;
+        }
         console.log(`Updating member ${memberIdx} with certificate data`);
       } else if (submissionType === 'resume') {
         updateData[`members.${memberIdx}.resumeFile`] = uploadResult.fileId;

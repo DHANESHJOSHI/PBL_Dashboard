@@ -14,8 +14,9 @@ export async function GET() {
       // console.log("College Data ",Col_Data); // Will Commmit on pRod Time 
     const uniqueCollegeMap = new Map();
     Col_Data.forEach(college => {
-      if(!uniqueCollegeMap.has(college.collegeId)){
-        uniqueCollegeMap.set(college.collegeId, {
+      const key = `${college.collegeId}-${(college.collegeName || "").toLowerCase().trim()}`;
+      if(!uniqueCollegeMap.has(key)){
+        uniqueCollegeMap.set(key, {
           collegeId: college.collegeId,
           collegeName: college.collegeName
         });

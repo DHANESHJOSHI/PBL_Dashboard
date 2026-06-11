@@ -37,7 +37,7 @@ export default function TeamDashboard() {
 
     try {
       const parsedTeamData = JSON.parse(storedTeamData)
-      setIsLeader(parsedTeamData.isLeader)
+      setIsLeader(parsedTeamData.isLeader || parsedTeamData.isAlternateLeader)
       setMemberEmail(parsedTeamData.memberEmail)
       fetchTeamData(parsedTeamData.teamID)
     } catch (error) {
@@ -58,6 +58,11 @@ export default function TeamDashboard() {
 
       if (data.success) {
         setTeamData(data.data.team)
+        // Check if the current user is still leader/alternate
+        const currentMember = data.data.team.members.find(m => m.email === memberEmail)
+        if (currentMember) {
+          setIsLeader(currentMember.isLeader || currentMember.isAlternateLeader)
+        }
       } else {
         toast.error("Failed to load team data")
         router.push("/")
@@ -83,6 +88,30 @@ export default function TeamDashboard() {
     const updatedTeam = { ...teamData }
     updatedTeam.members[memberIndex][field] = value
     setTeamData(updatedTeam)
+  }
+
+  const handleAssignRole = async (memberIndex, roleType) => {
+    if (!isLeader) {
+      toast.error("Only team leader can assign roles")
+      return
+    }
+
+    const updatedTeam = { ...teamData }
+    
+    if (roleType === "leader") {
+      // Clear current leader
+      updatedTeam.members.forEach(m => m.isLeader = false)
+      // Set new leader
+      updatedTeam.members[memberIndex].isLeader = true
+      toast.info("Leadership transferred. Click 'Save Changes' to confirm.")
+    } else if (roleType === "alternate") {
+      // Toggle alternate leader
+      updatedTeam.members[memberIndex].isAlternateLeader = !updatedTeam.members[memberIndex].isAlternateLeader
+      toast.info("Alternate Leader role updated. Click 'Save Changes' to confirm.")
+    }
+    
+    setTeamData(updatedTeam)
+    setEditingMember(memberIndex)
   }
 
   const handleSave = async () => {
@@ -281,6 +310,7 @@ export default function TeamDashboard() {
           isSaving={isSaving}
           handleEdit={handleEdit}
           handleMemberUpdate={handleMemberUpdate}
+          handleAssignRole={handleAssignRole}
           handleSave={handleSave}
           handleSubmissionClick={handleSubmissionClick}
         />

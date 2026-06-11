@@ -15,6 +15,9 @@ const TeamMemberSchema = new mongoose.Schema(
     githubLink: { type: String, default: "" },
     additionalNotes: { type: String, default: "" },
     isLeader: { type: Boolean, default: false },
+    isAlternateLeader: { type: Boolean, default: false },
+    certificateValidationStatus: { type: String, default: "" }, // 'Valid', 'Flagged', 'Failed'
+    certificateValidationNotes: { type: String, default: "" },
   },
   { _id: false },
 )

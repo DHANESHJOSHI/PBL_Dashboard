@@ -1,5 +1,5 @@
 
-import { Edit, Users, Upload, ExternalLink } from "lucide-react"
+import { Edit, Users, Upload, ExternalLink, ShieldCheck, ShieldAlert } from "lucide-react"
 
 export default function TeamMemberCard({ 
   member, 
@@ -10,6 +10,7 @@ export default function TeamMemberCard({
   teamData,
   handleEdit, 
   handleMemberUpdate, 
+  handleAssignRole,
   handleSave, 
   handleSubmissionClick 
 }) {
@@ -18,7 +19,7 @@ export default function TeamMemberCard({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h3 className="text-lg lg:text-xl font-bold text-blue-800 flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Team Member {index + 1} {member.isLeader ? "(LEADER)" : ""}
+          Team Member {index + 1} {member.isLeader ? "(LEADER)" : member.isAlternateLeader ? "(CO-LEAD)" : ""}
         </h3>
         {isLeader && (
           <button 
@@ -138,6 +139,39 @@ export default function TeamMemberCard({
           </div>
         )}
       </div>
+
+      {editingMember === index && isLeader && (
+        <div className="mb-6 p-4 border border-blue-200 bg-blue-50 rounded-xl">
+          <label className="block text-blue-800 font-semibold mb-3 text-sm lg:text-base">Role Management :</label>
+          <div className="flex flex-col sm:flex-row gap-4">
+            {!member.isLeader && (
+              <button
+                onClick={() => handleAssignRole(index, "leader")}
+                className="flex-1 bg-white border border-blue-300 text-blue-700 px-4 py-2 rounded-xl font-medium hover:bg-blue-100 transition-all duration-200 text-sm flex items-center justify-center gap-2"
+              >
+                <ShieldAlert className="h-4 w-4" />
+                Make Primary Leader
+              </button>
+            )}
+            {!member.isLeader && (
+              <button
+                onClick={() => handleAssignRole(index, "alternate")}
+                className={`flex-1 px-4 py-2 rounded-xl font-medium transition-all duration-200 text-sm flex items-center justify-center gap-2 ${
+                  member.isAlternateLeader 
+                    ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100" 
+                    : "bg-white border border-green-300 text-green-700 hover:bg-green-50"
+                }`}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                {member.isAlternateLeader ? "Remove Co-Lead Role" : "Assign as Co-Lead"}
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            * Making someone the Primary Leader will transfer your leadership rights to them. Co-Leads can help manage the team if the Primary Leader is unavailable.
+          </p>
+        </div>
+      )}
 
       {editingMember === index && (
         <div className="text-center">

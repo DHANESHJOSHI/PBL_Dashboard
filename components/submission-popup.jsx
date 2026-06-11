@@ -9,6 +9,8 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
   const [linkedinLink, setLinkedinLink] = useState(initialData.linkedinLink || "");
   const [subCategory, setSubCategory] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [submissionMethod, setSubmissionMethod] = useState("file"); // "file" or "link"
+  const [driveLink, setDriveLink] = useState("");
 
   const finalDeliverableCategories = [
     { value: "Screenshots", label: "Screenshots" },
@@ -53,12 +55,30 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
     return linkedinRegex.test(url.trim());
   };
 
+  const validateDriveLink = (url) => {
+    const driveRegex = /^https?:\/\/(drive|docs)\.google\.com\/.*$/;
+    return driveRegex.test(url.trim());
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!file) {
-      toast.error("Please select a file to upload");
-      return;
+    const isProjectSubmission = type === "conceptNote" || type === "finalDeliverable";
+
+    if (submissionMethod === "file") {
+      if (!file) {
+        toast.error("Please select a file to upload");
+        return;
+      }
+    } else if (isProjectSubmission && submissionMethod === "link") {
+      if (!driveLink.trim()) {
+        toast.error("Please provide a Google Drive link");
+        return;
+      }
+      if (!validateDriveLink(driveLink)) {
+        toast.error("Please provide a valid Google Drive link (e.g., https://drive.google.com/...)");
+        return;
+      }
     }
 
     if (type === "finalDeliverable" && !subCategory) {
@@ -99,7 +119,11 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
       });
 
       const formData = new FormData();
-      formData.append("file", file);
+      if (submissionMethod === "file") {
+        formData.append("file", file);
+      } else {
+        formData.append("driveLink", driveLink.trim());
+      }
       formData.append("teamId", teamData.teamID);
       formData.append("submissionType", type);
       
@@ -113,6 +137,12 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
       
       if (linkedinLink.trim()) {
         formData.append("linkedinLink", linkedinLink.trim());
+      }
+      
+      if (submissionMethod === "link") {
+        formData.append("submissionMethod", "link");
+      } else {
+        formData.append("submissionMethod", "file");
       }
 
       console.log('Sending upload request...');
@@ -138,6 +168,7 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
         setFile(null);
         setLinkedinLink("");
         setSubCategory("");
+        setDriveLink("");
         // Reset file input
         const fileInput = document.getElementById('file-upload');
         if (fileInput) fileInput.value = '';
@@ -159,6 +190,7 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
       setFile(null);
       setLinkedinLink("");
       setSubCategory("");
+      setDriveLink("");
       const fileInput = document.getElementById('file-upload');
       if (fileInput) fileInput.value = '';
       onClose();
@@ -281,8 +313,38 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
             </div>
           )}
 
-          {/* File Upload */}
-          <div className="space-y-2">
+          {/* Submission Method Toggle for Projects */}
+          {(type === "conceptNote" || type === "finalDeliverable") && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Submission Method
+              </label>
+              <div className="flex bg-gray-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setSubmissionMethod("file")}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    submissionMethod === "file" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  File Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubmissionMethod("link")}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    submissionMethod === "link" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Drive Link
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* File Upload or Drive Link Input */}
+          {submissionMethod === "file" ? (
+            <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
               Select File *
             </label>
@@ -319,6 +381,28 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
               </label>
             </div>
           </div>
+          ) : (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Google Drive Link *
+              </label>
+              <div className="relative">
+                <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="url"
+                  value={driveLink}
+                  onChange={(e) => setDriveLink(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  required
+                  disabled={isUploading}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:opacity-50"
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Please make sure the link access is set to "Anyone with the link can view".
+              </p>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
@@ -332,7 +416,13 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
             </button>
             <button
               type="submit"
-              disabled={isUploading || !file || (type === "finalDeliverable" && !subCategory) || (type === "resume" && !linkedinLink.trim())}
+              disabled={
+                isUploading || 
+                (submissionMethod === "file" && !file) || 
+                (submissionMethod === "link" && !driveLink.trim()) ||
+                (type === "finalDeliverable" && !subCategory) || 
+                (type === "resume" && !linkedinLink.trim())
+              }
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isUploading ? (

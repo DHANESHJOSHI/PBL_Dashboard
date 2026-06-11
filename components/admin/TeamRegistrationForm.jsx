@@ -306,38 +306,43 @@ export default function TeamRegistrationForm({
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row justify-between mt-6 lg:mt-8 gap-4">
-            {teamForm.step > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  setTeamForm({ ...teamForm, step: teamForm.step - 1 })
-                }
-                className="flex items-center gap-2 rounded-xl border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-md"
-              >
-                Previous
-              </Button>
-            )}
-            {teamForm.step < 3 ? (
-              <Button
-                type="button"
-                onClick={() =>
-                  setTeamForm({ ...teamForm, step: teamForm.step + 1 })
-                }
-                className="sm:ml-auto bg-blue-600 hover:bg-blue-700 rounded-xl transition-all duration-200 hover:shadow-lg"
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="sm:ml-auto bg-green-600 hover:bg-green-700 rounded-xl transition-all duration-200 hover:shadow-lg"
-              >
-                {isLoading ? "Registering..." : "Register Team"}
-              </Button>
-            )}
+          <div className="flex flex-col-reverse sm:flex-row justify-between items-center mt-8 pt-6 border-t border-gray-100 gap-4">
+            <div className="w-full sm:w-auto">
+              {teamForm.step > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setTeamForm({ ...teamForm, step: teamForm.step - 1 })
+                  }
+                  className="w-full sm:w-32 flex items-center justify-center gap-2 rounded-xl border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-semibold transition-all h-11"
+                >
+                  ← Previous
+                </Button>
+              )}
+            </div>
+            
+            <div className="w-full sm:w-auto flex-1 sm:flex-none flex justify-end">
+              {teamForm.step < 3 ? (
+                <Button
+                  type="button"
+                  onClick={() =>
+                    setTeamForm({ ...teamForm, step: teamForm.step + 1 })
+                  }
+                  className="w-full sm:w-40 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-sm hover:shadow h-11"
+                >
+                  Next Step →
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full sm:w-48 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all shadow-sm hover:shadow h-11"
+                >
+                  {isLoading ? "Registering..." : "Complete Registration"}
+                </Button>
+              )}
+            </div>
           </div>
         </form>
       </CardContent>

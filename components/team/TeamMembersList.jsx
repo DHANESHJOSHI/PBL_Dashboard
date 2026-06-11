@@ -8,6 +8,7 @@ export default function TeamMembersList({
   isSaving,
   handleEdit, 
   handleMemberUpdate, 
+  handleAssignRole,
   handleSave, 
   handleSubmissionClick 
 }) {
@@ -24,6 +25,7 @@ export default function TeamMembersList({
           teamData={teamData}
           handleEdit={handleEdit}
           handleMemberUpdate={handleMemberUpdate}
+          handleAssignRole={handleAssignRole}
           handleSave={handleSave}
           handleSubmissionClick={handleSubmissionClick}
         />

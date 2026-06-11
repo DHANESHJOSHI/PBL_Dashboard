@@ -4,9 +4,10 @@ import { requireAdmin } from "@/middleware/auth";
 import connectDB from "@/lib/mongodb";
 import Notice from "@/models/Notice";
 
-async function patchHandler(request, { params }) {
+async function patchHandler(request, props) {
   try {
     await connectDB();
+    const params = await props.params;
     const { noticeId } = params;
     const { title, content } = await request.json();
     
@@ -46,9 +47,10 @@ async function patchHandler(request, { params }) {
   }
 }
 
-async function deleteHandler(request, { params }) {
+async function deleteHandler(request, props) {
   try {
     await connectDB();
+    const params = await props.params;
     const { noticeId } = params;
 
     const deletedNotice = await Notice.findByIdAndDelete(noticeId);

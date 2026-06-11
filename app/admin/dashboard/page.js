@@ -598,9 +598,9 @@ export default function AdminDashboard() {
   return (
     <SidebarProvider>
       <AdminSidebar activeView={activeView} setActiveView={setActiveView} />
-      <SidebarInset className="flex-1">
+      <SidebarInset className="flex-1 w-full overflow-x-hidden">
         <AdminHeader logout={logout} />
-        <div className="flex-1 p-4 lg:p-6 bg-gray-50 min-h-0">
+        <div className="flex-1 p-4 lg:p-6 bg-gray-50 min-h-0 min-w-0 w-full overflow-x-hidden">
           {activeView === "teams" && (
             <TeamsView
               uploadResult={uploadResult}

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, Trash2 } from "lucide-react";
+import { Upload, Trash2, Plus, Minus } from "lucide-react";
 import UploadResultAlert from "./UploadResultAlert";
 import TeamRegistrationForm from "./TeamRegistrationForm";
 import TeamsTable from "./TeamsTable";
@@ -36,33 +37,33 @@ export default function TeamsView({
   handleExportTeams,
   handleMarksProgressUpload
 }) {
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+
   return (
-    <div className="space-y-6 lg:space-y-8">
-      {/* Header Section */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+    <div className="space-y-5">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-200">
         <div>
-          <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">Team Management</h2>
-          <p className="text-gray-600 mt-1">
-            Manage team registrations and view team details
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Team Management</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage team registrations and view team details</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={handleCSVUpload}
-            className="hidden"
-            id="csv-upload"
-          />
-          <Button
+        <div className="flex items-center gap-2">
+          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleCSVUpload} className="hidden" id="csv-upload" />
+          <button
             onClick={() => document.getElementById("csv-upload").click()}
             disabled={isLoading}
-            variant="outline"
-            className="flex items-center gap-2 rounded-xl border-gray-300 hover:border-gray-400 transition-all duration-200 hover:shadow-md"
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-          <Upload className="h-4 w-4" />
-            {isLoading ? "Uploading..." : "Upload CSV/Excel"}
-          </Button>
+            <Upload className="h-4 w-4 text-gray-600" />
+            {isLoading ? "Uploading..." : "Upload CSV"}
+          </button>
+          <button
+            onClick={() => setShowRegistrationForm(!showRegistrationForm)}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-colors ${showRegistrationForm ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+          >
+            {showRegistrationForm ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {showRegistrationForm ? "Hide Form" : "Register Team"}
+          </button>
         </div>
       </div>
 
@@ -70,15 +71,19 @@ export default function TeamsView({
       <UploadResultAlert uploadResult={uploadResult} />
 
       {/* Team Registration Form */}
-      <TeamRegistrationForm
-        teamForm={teamForm}
-        setTeamForm={setTeamForm}
-        handleTeamFormSubmit={handleTeamFormSubmit}
-        isLoading={isLoading}
-        addMember={addMember}
-        removeMember={removeMember}
-        updateMember={updateMember}
-      />
+      {showRegistrationForm && (
+        <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+          <TeamRegistrationForm
+            teamForm={teamForm}
+            setTeamForm={setTeamForm}
+            handleTeamFormSubmit={handleTeamFormSubmit}
+            isLoading={isLoading}
+            addMember={addMember}
+            removeMember={removeMember}
+            updateMember={updateMember}
+          />
+        </div>
+      )}
 
       {/* Teams Table */}
       <TeamsTable

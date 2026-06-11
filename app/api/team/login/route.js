@@ -28,10 +28,11 @@ export async function POST(request) {
     // Connect to database
     await connectDB();
 
-    // Find team with matching member email and college ID
+    // Find team with matching member email and college ID (case-insensitive)
+    const normalizedEmail = email.toLowerCase().trim();
     const team = await Team.findOne({
       collegeId: collegeId,
-      "members.email": email.toLowerCase().trim(),
+      "members.email": { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
     });
 
     if (!team) {

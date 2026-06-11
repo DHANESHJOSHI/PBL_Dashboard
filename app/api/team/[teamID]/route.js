@@ -3,9 +3,10 @@ import connectDB from "@/lib/mongodb"
 import Team from "@/models/Team"
 import { createResponse } from "@/lib/utils"
 
-export async function GET(request, { params }) {
+export async function GET(request, props) {
 try {
 await connectDB()
+const params = await props.params
 const { teamID } = params
 const { searchParams } = new URL(request.url)
 const groupByCollege = searchParams.get('groupByCollege')
@@ -96,9 +97,10 @@ collegePincode: team.collegePincode,
     return NextResponse.json(createResponse(false, "Internal server error"), { status: 500 })
   }
 }
-export async function PUT(request, { params }) {
+export async function PUT(request, props) {
   try {
     await connectDB()
+    const params = await props.params
     const { teamID } = params
     const updateData = await request.json()
 
@@ -125,7 +127,8 @@ export async function PUT(request, { params }) {
           learningPlanCompletion: member.learningPlanCompletion || existingMember.learningPlanCompletion || "0%",
           currentMarks: member.currentMarks || existingMember.currentMarks || "0",
           additionalNotes: member.additionalNotes || existingMember.additionalNotes || "",
-          isLeader: member.isLeader !== undefined ? member.isLeader : (existingMember.isLeader || false)
+          isLeader: member.isLeader !== undefined ? member.isLeader : (existingMember.isLeader || false),
+          isAlternateLeader: member.isAlternateLeader !== undefined ? member.isAlternateLeader : (existingMember.isAlternateLeader || false)
         }
       })
 
