@@ -6,7 +6,7 @@ import GlobalSettings from '@/models/GlobalSettings';
 import { createResponse } from '@/lib/utils';
 import { requireTeam } from '@/middleware/auth';
 import Tesseract from 'tesseract.js';
-import pdfParse from 'pdf-parse';
+import pdfParse from 'pdf-parse-debugging-disabled';
 
 async function handler(request) {
   try {
