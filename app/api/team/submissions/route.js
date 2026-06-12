@@ -133,13 +133,14 @@ async function handler(request) {
           const nameMatch = extractedText.includes(firstName);
           
           const internshipName = team.internshipName ? team.internshipName.toLowerCase() : "";
-          const courseKeywords = internshipName.split(' ').filter(w => w.length > 3);
-          // Check if at least one keyword of the course is present
+          const courseName = team.courseName ? team.courseName.toLowerCase() : "";
+          const courseKeywords = [...internshipName.split(' '), ...courseName.split(' ')].filter(w => w.length > 3);
+          // Check if at least one keyword of the internship or course is present
           const courseMatch = courseKeywords.length === 0 || courseKeywords.some(kw => extractedText.includes(kw));
           
           if (!nameMatch && !courseMatch) {
             fileData.certificateValidationStatus = "Flagged";
-            fileData.certificateValidationNotes = `Mismatch detected: Could not verify name ('${firstName}') or course.`;
+            fileData.certificateValidationNotes = `Mismatch detected: Could not verify name ('${firstName}') or course/internship.`;
             console.log('OCR Validation: Flagged (Name and Course)');
           } else if (!nameMatch) {
             fileData.certificateValidationStatus = "Flagged";
@@ -147,7 +148,7 @@ async function handler(request) {
             console.log('OCR Validation: Flagged (Name)');
           } else if (!courseMatch) {
             fileData.certificateValidationStatus = "Flagged";
-            fileData.certificateValidationNotes = `Course mismatch detected. Could not verify '${internshipName}' in certificate.`;
+            fileData.certificateValidationNotes = `Course mismatch detected. Could not verify internship or course name in certificate.`;
             console.log('OCR Validation: Flagged (Course)');
           } else {
             fileData.certificateValidationStatus = "Valid";

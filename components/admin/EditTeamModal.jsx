@@ -125,6 +125,9 @@ export default function EditTeamModal({ editModalOpen, setEditModalOpen, editing
               <Field label="Internship Name" icon={Briefcase}>
                 <Input value={localTeam.internshipName || ''} onChange={e => updateTeamField('internshipName', e.target.value)} className={inputCls} />
               </Field>
+              <Field label="Course Name" icon={Briefcase}>
+                <Input value={localTeam.courseName || ''} onChange={e => updateTeamField('courseName', e.target.value)} className={inputCls} />
+              </Field>
               <Field label="Total Female Members" icon={Users}>
                 <Input type="number" min="0" max={localTeam.members?.length || 1} value={localTeam.totalFemaleMembers || 0} onChange={e => updateTeamField('totalFemaleMembers', Number(e.target.value))} className={inputCls} />
               </Field>

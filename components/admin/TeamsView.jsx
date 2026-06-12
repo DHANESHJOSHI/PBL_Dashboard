@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, Trash2, Plus, Minus } from "lucide-react";
+import { Upload, Trash2, Plus, Minus, Download } from "lucide-react";
 import UploadResultAlert from "./UploadResultAlert";
 import TeamRegistrationForm from "./TeamRegistrationForm";
 import TeamsTable from "./TeamsTable";
@@ -39,6 +39,47 @@ export default function TeamsView({
 }) {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
 
+  const handleDownloadTemplate = () => {
+    const headers = [
+      "teamId", "teamName", "collegeName", "collegeId", "collegePincode",
+      "internshipName", "courseName", "totalMembers", "totalFemaleMembers",
+      "leaderName", "memberName", "email", "learningPlanCompletion",
+      "currentMarks", "certificateLink", "resumeLink", "linkedinLink",
+      "portfolioLink", "githubLink", "additionalNotes"
+    ];
+    
+    const sampleRow1 = [
+      "TEAM-12345", "Innovators", "ABC Engineering College", "ABC001", "110001",
+      "AICTE | IBM SkillsBuild Internship", "Data Analytics", "2", "1",
+      "Ramesh Kumar", "Ramesh Kumar", "ramesh@example.com", "0%",
+      "0", "", "", "https://linkedin.com/in/ramesh",
+      "", "https://github.com/ramesh", "Team Leader"
+    ];
+
+    const sampleRow2 = [
+      "TEAM-12345", "Innovators", "ABC Engineering College", "ABC001", "110001",
+      "AICTE | IBM SkillsBuild Internship", "Data Analytics", "2", "1",
+      "Ramesh Kumar", "Sita Sharma", "sita@example.com", "0%",
+      "0", "", "", "https://linkedin.com/in/sita",
+      "", "https://github.com/sita", "Member"
+    ];
+
+    const csvContent = [
+      headers.join(","),
+      sampleRow1.join(","),
+      sampleRow2.join(",")
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "Team_Registration_Template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-5">
       {/* Page Header */}
@@ -50,9 +91,16 @@ export default function TeamsView({
         <div className="flex items-center gap-2">
           <input type="file" accept=".csv,.xlsx,.xls" onChange={handleCSVUpload} className="hidden" id="csv-upload" />
           <button
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-gray-700"
+          >
+            <Download className="h-4 w-4 text-gray-600" />
+            Sample CSV
+          </button>
+          <button
             onClick={() => document.getElementById("csv-upload").click()}
             disabled={isLoading}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 text-gray-700"
           >
             <Upload className="h-4 w-4 text-gray-600" />
             {isLoading ? "Uploading..." : "Upload CSV"}

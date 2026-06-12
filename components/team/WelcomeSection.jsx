@@ -103,6 +103,19 @@ export default function WelcomeSection({
         </div>
       </div>
 
+      {teamData.courseName && (
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <label className="text-blue-800 font-semibold text-sm lg:text-base whitespace-nowrap">
+              Course Name :
+            </label>
+            <div className="border-b-2 border-blue-800 flex-1 pb-1">
+              <span className="text-blue-800 font-medium">{teamData.courseName}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <label className="text-blue-800 font-semibold text-sm lg:text-base whitespace-nowrap">

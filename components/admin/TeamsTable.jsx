@@ -161,7 +161,7 @@ export default function TeamsTable({
                 <th className="w-8 px-1 py-3" />
                 <th className="w-10 px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">#</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Internship</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Internship / Course</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">College</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Leader</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Members</th>
@@ -209,9 +209,14 @@ export default function TeamsTable({
                           </div>
                         </div>
                       </td>
-                      {/* Internship */}
+                      {/* Internship & Course */}
                       <td className="px-3 py-3 hidden md:table-cell">
-                        <span className="text-xs text-gray-700 font-medium truncate block max-w-[150px]" title={team.internshipName}>{team.internshipName || '—'}</span>
+                        <div className="min-w-0">
+                          <span className="text-xs text-gray-700 font-medium truncate block max-w-[150px]" title={team.internshipName}>{team.internshipName || '—'}</span>
+                          {team.courseName && (
+                            <span className="text-[10px] text-gray-500 truncate block max-w-[150px]" title={team.courseName}>{team.courseName}</span>
+                          )}
+                        </div>
                       </td>
                       {/* College */}
                       <td className="px-3 py-3 hidden lg:table-cell">

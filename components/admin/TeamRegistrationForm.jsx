@@ -70,6 +70,22 @@ export default function TeamRegistrationForm({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">
+                    Course Name
+                  </Label>
+                  <Input
+                    value={teamForm.data.courseName || ""}
+                    onChange={(e) =>
+                      setTeamForm({
+                        ...teamForm,
+                        data: { ...teamForm.data, courseName: e.target.value },
+                      })
+                    }
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
+                    placeholder="Enter course name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
                     College Name *
                   </Label>
                   <Input
