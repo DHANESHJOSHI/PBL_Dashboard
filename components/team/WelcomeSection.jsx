@@ -16,6 +16,11 @@ export default function WelcomeSection({
   
   return (
     <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 lg:p-8 mb-8">
+      <div className="text-center mb-6 border-b border-blue-200 pb-4">
+        <h2 className="text-xl lg:text-2xl font-bold text-blue-900 uppercase tracking-wide">
+          IBM SkillsBuild Academic Internships 2026
+        </h2>
+      </div>
       <h1 className="text-2xl lg:text-3xl font-bold text-blue-800 text-center mb-4">
         Hello! Team {teamData.teamName || "<<Team Name>>"}
       </h1>

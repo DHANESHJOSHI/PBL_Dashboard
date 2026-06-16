@@ -50,7 +50,7 @@ export default function TeamsView({
     
     const sampleRow1 = [
       "TEAM-12345", "Innovators", "ABC Engineering College", "ABC001", "110001",
-      "AICTE | IBM SkillsBuild Internship", "Data Analytics", "2", "1",
+      "AICTE | IBM SkillsBuild Big Data & Business Management Internship | BharatCares", "Data Analytics", "2", "1",
       "Ramesh Kumar", "Ramesh Kumar", "ramesh@example.com", "0%",
       "0", "", "", "https://linkedin.com/in/ramesh",
       "", "https://github.com/ramesh", "Team Leader"
@@ -58,7 +58,7 @@ export default function TeamsView({
 
     const sampleRow2 = [
       "TEAM-12345", "Innovators", "ABC Engineering College", "ABC001", "110001",
-      "AICTE | IBM SkillsBuild Internship", "Data Analytics", "2", "1",
+      "AICTE | IBM SkillsBuild Big Data & Business Management Internship | BharatCares", "Data Analytics", "2", "1",
       "Ramesh Kumar", "Sita Sharma", "sita@example.com", "0%",
       "0", "", "", "https://linkedin.com/in/sita",
       "", "https://github.com/sita", "Member"

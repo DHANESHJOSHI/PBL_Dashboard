@@ -12,6 +12,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    serverExternalPackages: ['tesseract.js']
+  }
 }
 
 module.exports = nextConfig

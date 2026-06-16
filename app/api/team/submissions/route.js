@@ -114,51 +114,67 @@ async function handler(request) {
           
           let extractedText = "";
 
-          if (fileExtension === '.pdf') {
-            const pdfData = await pdfParse(fileData.buffer);
-            extractedText = pdfData.text.toLowerCase();
-          } else {
-            const path = require('path');
-            const worker = await Tesseract.createWorker('eng', 1, {
-              cachePath: path.join(process.cwd(), 'tessdata')
-            });
-            const { data: { text } } = await worker.recognize(fileData.buffer);
-            await worker.terminate();
-            extractedText = text.toLowerCase();
-          }
+          // Wrap OCR in a timeout to prevent hanging the server
+          const ocrPromise = (async () => {
+            if (fileExtension === '.pdf') {
+              const pdfData = await pdfParse(fileData.buffer);
+              return pdfData.text.toLowerCase();
+            } else {
+              const path = require('path');
+              const worker = await Tesseract.createWorker('eng', 1, {
+                workerPath: path.join(process.cwd(), 'node_modules/tesseract.js/src/worker-script/node/index.js'),
+                corePath: path.join(process.cwd(), 'node_modules/tesseract.js-core'),
+                cachePath: path.join(process.cwd(), 'tessdata')
+              });
+              const { data: { text } } = await worker.recognize(fileData.buffer);
+              await worker.terminate();
+              return text.toLowerCase();
+            }
+          })();
+
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('OCR Timeout')), 15000)
+          );
+
+          extractedText = await Promise.race([ocrPromise, timeoutPromise]);
 
           console.log('Extracted text preview:', extractedText.substring(0, 100));
 
-          const firstName = memberName.split(' ')[0];
-          const nameMatch = extractedText.includes(firstName);
+          const nameParts = memberName.split(' ').filter(w => w.trim().length > 2);
+          const nameMatch = nameParts.length > 0 ? nameParts.some(part => extractedText.includes(part)) : extractedText.includes(memberName.trim());
           
           const internshipName = team.internshipName ? team.internshipName.toLowerCase() : "";
           const courseName = team.courseName ? team.courseName.toLowerCase() : "";
-          const courseKeywords = [...internshipName.split(' '), ...courseName.split(' ')].filter(w => w.length > 3);
-          // Check if at least one keyword of the internship or course is present
+          // Filter out generic words to ensure we match the specific track name
+          const genericWords = ['aicte', 'ibm', 'skillsbuild', 'bharatcares', 'internship', 'program', 'project'];
+          const courseKeywords = [...internshipName.split(' '), ...courseName.split(' ')]
+            .filter(w => w.length > 3 && !genericWords.includes(w));
+            
+          // Check if at least one meaningful keyword of the internship or course is present
           const courseMatch = courseKeywords.length === 0 || courseKeywords.some(kw => extractedText.includes(kw));
           
-          if (!nameMatch && !courseMatch) {
-            fileData.certificateValidationStatus = "Flagged";
-            fileData.certificateValidationNotes = `Mismatch detected: Could not verify name ('${firstName}') or course/internship.`;
-            console.log('OCR Validation: Flagged (Name and Course)');
-          } else if (!nameMatch) {
-            fileData.certificateValidationStatus = "Flagged";
-            fileData.certificateValidationNotes = `Name mismatch detected. Could not find '${firstName}' in certificate.`;
-            console.log('OCR Validation: Flagged (Name)');
-          } else if (!courseMatch) {
-            fileData.certificateValidationStatus = "Flagged";
-            fileData.certificateValidationNotes = `Course mismatch detected. Could not verify internship or course name in certificate.`;
-            console.log('OCR Validation: Flagged (Course)');
-          } else {
-            fileData.certificateValidationStatus = "Valid";
-            fileData.certificateValidationNotes = "Validation passed.";
-            console.log('OCR Validation: Valid');
+          if (!nameMatch || !courseMatch) {
+            let errorMsg = "Certificate is not valid. ";
+            if (!nameMatch && !courseMatch) {
+              errorMsg += "Both Name and Internship track do not match.";
+            } else if (!nameMatch) {
+              errorMsg += "Internship track matches successfully, but Name does not match your registered name.";
+            } else {
+              errorMsg += "Name matches successfully, but Internship track does not match your registered program.";
+            }
+            console.log('OCR Validation Failed:', errorMsg);
+            return NextResponse.json(createResponse(false, errorMsg), { status: 400 });
           }
+          
+          fileData.certificateValidationStatus = "Valid";
+          fileData.certificateValidationNotes = "Validation passed.";
+          console.log('OCR Validation: Valid');
         } catch (error) {
           console.error("OCR Validation error:", error);
-          fileData.certificateValidationStatus = "Flagged";
-          fileData.certificateValidationNotes = "OCR validation failed or document unreadable.";
+          const msg = error.message === 'OCR Timeout' 
+            ? "Certificate validation timed out. Please try uploading a clearer image or PDF." 
+            : "Certificate validation failed or document unreadable. Please ensure it is a valid certificate.";
+          return NextResponse.json(createResponse(false, msg), { status: 400 });
         }
       }
     } else if (submissionMethod === 'link') {

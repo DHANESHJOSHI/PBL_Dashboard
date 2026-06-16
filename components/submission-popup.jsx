@@ -277,6 +277,24 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
           <div>
             <h2 className="text-xl font-bold text-gray-900">{getTitle()}</h2>
             <p className="text-sm text-gray-600 mt-1">{getDescription()}</p>
+            {type === "certificate" && (
+              <button
+                type="button"
+                onClick={() => {
+                  let sampleImage = "/sample_certificate_gen_ai.jpeg";
+                  if (internshipName && internshipName.toLowerCase().includes("big data")) {
+                    sampleImage = "/sample_certificate_big_data.jpeg";
+                  } else if (internshipName && internshipName.toLowerCase().includes("ai automation")) {
+                    sampleImage = "/sample_certificate_ai_automation.jpeg";
+                  }
+                  window.open(sampleImage, "_blank");
+                }}
+                className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                View Sample Certificate
+              </button>
+            )}
           </div>
           <button
             onClick={handleClose}

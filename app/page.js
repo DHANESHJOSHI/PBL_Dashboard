@@ -137,17 +137,21 @@ export default function HomePage() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 lg:mb-12">
           <div className="flex items-center mb-4 lg:mb-0">
              <Image
-              src="/CSR_white.png"
-              alt="CSR IBM Logo"
-              width={200} // add your desired width
-              height={100} // add your desired height
+              src="/bharatcares_white.png"
+              alt="BharatCares Logo"
+              width={200}
+              height={100}
+              style={{ width: "auto", height: "auto", maxHeight: "60px" }}
+              priority
             />
           </div>
            <Image
-              src="/CSR_IBM_logo_PNG-04.png"
-              alt="CSR IBM Logo"
-              width={200} // add your desired width
-              height={100} // add your desired height
+              src="/ICWIBM_Logo.png"
+              alt="IBM Logo"
+              width={150}
+              height={100}
+              style={{ width: "auto", height: "auto", maxHeight: "80px", minWidth: "80px" }}
+              priority
             />
         </div>
 
@@ -155,7 +159,7 @@ export default function HomePage() {
         <div className="text-center text-white mb-8 lg:mb-12">
           {/* <div className="text-base text-xl sm:text-3xl lg:text-2xl xl:text-4xl mb-2 italic font-light"></div> Welcome to */}
           <div className="text-xl sm:text-3xl lg:text-2xl xl:text-4xl font-bold leading-tight">
-            IBM Skillsbuild Project Based Learning Program 2025
+            IBM Skillsbuild Project Based Learning Program 2026
           </div>
         </div>
 

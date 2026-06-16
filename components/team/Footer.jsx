@@ -6,10 +6,11 @@ export default function Footer({ handleLogout }) {
     <div className="mt-12 flex flex-col lg:flex-row justify-between items-center bg-white rounded-2xl shadow-xl border-0 p-6 gap-4">
       <div>
           <Image
-            src="/csrbox.png"
-            alt="CSR IBM Logo"
+            src="/bharatcares_original.png"
+            alt="BharatCares Logo"
             width={200}
             height={100}
+            style={{ width: "auto", height: "auto", maxHeight: "50px" }}
           />
       </div>
       <button
@@ -20,10 +21,11 @@ export default function Footer({ handleLogout }) {
       </button>
       <div>
         <Image
-            src="/ibm.png"
-            alt="CSR IBM Logo"
+            src="/ibm_gap.png"
+            alt="IBM Logo"
             width={200}
             height={100}
+            style={{ width: "auto", height: "auto", maxHeight: "80px" }}
           />
       </div>
     </div>  )
