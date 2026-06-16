@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 
-// Dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
-import 'react-quill/dist/quill.snow.css';
+// Dynamically import ReactQuill to avoid SSR issues and React 19 findDOMNode errors
+const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
+import 'react-quill-new/dist/quill.snow.css';
 
 const RichTextEditor = ({ value, onChange, placeholder = "Enter content..." }) => {
   const [mounted, setMounted] = useState(false);
@@ -29,7 +29,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Enter content..." }) =
 
   const formats = [
     'header', 'bold', 'italic', 'underline', 'strike',
-    'list', 'bullet', 'indent',
+    'list', 'indent',
     'link', 'color', 'background', 'align'
   ];
 

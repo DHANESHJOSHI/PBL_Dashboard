@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, X, Bell, Save } from "lucide-react";
 import RichTextEditor from "@/components/rich-text-editor";
 
@@ -15,6 +15,9 @@ export default function NoticeModal({
   return (
     <Dialog open={noticeModalOpen} onOpenChange={setNoticeModalOpen}>
       <DialogContent className="sm:max-w-3xl bg-white border-0 shadow-2xl rounded-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogTitle className="sr-only">
+          {editingNotice ? "Edit Notice" : "Create New Notice"}
+        </DialogTitle>
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-2xl">
