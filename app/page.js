@@ -159,7 +159,7 @@ export default function HomePage() {
         <div className="text-center text-white mb-8 lg:mb-12">
           {/* <div className="text-base text-xl sm:text-3xl lg:text-2xl xl:text-4xl mb-2 italic font-light"></div> Welcome to */}
           <div className="text-xl sm:text-3xl lg:text-2xl xl:text-4xl font-bold leading-tight">
-            IBM Skillsbuild Project Based Learning Program 2026
+            IBM SkillsBuild Academic Internships 2026
           </div>
         </div>
 
