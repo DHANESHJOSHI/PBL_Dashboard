@@ -222,7 +222,7 @@ export default function HomePage() {
                   className={`w-full px-4 lg:px-6 py-3 lg:py-4 rounded-xl lg:rounded-2xl border-2 bg-transparent text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:bg-white/10 transition-all duration-200 text-sm lg:text-base ${
                     errors.email ? 'border-red-400' : 'border-white focus:border-blue-300'
                   }`}
-                  placeholder="Enter Your Registered GMAIL ID"
+                  placeholder="Enter Your Registered EMAIL ID"
                   required
                 />
                 {errors.email && (
