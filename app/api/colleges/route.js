@@ -11,7 +11,6 @@ export async function GET() {
     const Col_Data =  await Team.find()
                             .select('collegeId collegeName')  //get Only Relevant Fields
                             .lean(); //Improves Performance by returning plain JS Objects
-      // console.log("College Data ",Col_Data); // Will Commmit on pRod Time 
     const uniqueCollegeMap = new Map();
     Col_Data.forEach(college => {
       const key = `${college.collegeId}-${(college.collegeName || "").toLowerCase().trim()}`;
@@ -26,8 +25,6 @@ export async function GET() {
     const colleges = Array.from(uniqueCollegeMap.values()).sort((a,b) => 
       a.collegeName.localeCompare(b.collegeName)
     );
-
-    console.log("Data >>>>>>>>", colleges);
 
       // Trash Code Starts here 
     // const colleges = await Team.aggregate([

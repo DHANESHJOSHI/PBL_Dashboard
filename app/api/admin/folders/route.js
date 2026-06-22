@@ -3,6 +3,7 @@ import { createResponse } from "@/lib/utils";
 import { requireAdmin } from "@/middleware/auth";
 import connectDB from "@/lib/mongodb";
 import Team from "@/models/Team";
+import GlobalSettings from "@/models/GlobalSettings";
 import { getDriveClient, createTeamFolderStructure, ensureTeamFolderStructure } from "@/lib/gdrive-utils";
 
 async function getHandler(request) {
@@ -49,6 +50,11 @@ async function postHandler(request) {
       return NextResponse.json(createResponse(false, "Team ID is required"), { status: 400 });
     }
 
+    const globalSettings = await GlobalSettings.findOne({ settingType: 'folderStructure' });
+    if (!globalSettings || !globalSettings.driveLink) {
+      return NextResponse.json(createResponse(false, "GlobalSettings driveLink is required. Please configure a shared drive link in admin settings."), { status: 400 });
+    }
+
     const team = await Team.findOne({ teamID: teamId });
     if (!team) {
       return NextResponse.json(createResponse(false, "Team not found"), { status: 404 });
@@ -77,7 +83,7 @@ async function postHandler(request) {
       if (!folderStructure || !folderStructure.memberFolders) {
         console.log(`Creating folder structure for team ${teamId} before enabling submissions`);
         const drive = await getDriveClient();
-        folderStructure = await ensureTeamFolderStructure(drive, team);
+        folderStructure = await ensureTeamFolderStructure(drive, team, globalSettings);
       }
 
       await Team.findOneAndUpdate(
@@ -104,14 +110,18 @@ async function postHandler(request) {
         
         if (process.env.NODE_ENV === 'development' && !process.env.GOOGLE_SERVICE_ACCOUNT_PATH) {
           // Use mock structure for development
-          folderStructure = await ensureTeamFolderStructure(drive, team);
+          folderStructure = await ensureTeamFolderStructure(drive, team, globalSettings);
           // Apply custom names to mock structure
           if (customFolderNames) {
             folderStructure.customFolderNames = customFolderNames;
           }
         } else {
           // Create real Google Drive structure with custom names
-          folderStructure = await createTeamFolderStructure(drive, team, customFolderNames);
+          if (customFolderNames) {
+            // Apply custom folder logic here if needed or just use default
+            team.mainFolders = customFolderNames.folders;
+          }
+          folderStructure = await createTeamFolderStructure(drive, team, globalSettings);
         }
         
         // Update team with folder structure info AND enable submissions
