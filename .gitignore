@@ -37,6 +37,10 @@ Thumbs.db
 *.key
 *.service-account.json
 *.google-credentials.json
+
+# Next.js auto-generated (do not track)
+next-env.d.ts
+
 # Misc
 .next/cache/
 *.tgz
