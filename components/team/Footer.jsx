@@ -21,7 +21,7 @@ export default function Footer({ handleLogout }) {
             </button>
             <div>
                 <Image
-                    src="/CSR_IBM_logo_PNG-04.png"
+                    src="/Gap@2x.png"
                     alt="IBM Logo"
                     width={200}
                     height={100}
