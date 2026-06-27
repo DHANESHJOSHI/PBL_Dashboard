@@ -29,7 +29,7 @@ export default function Header() {
                             priority
                         />
                         <Image
-                            src="/ibm_gap.png"
+                            src="/CSR_IBM_logo_PNG-04.png"
                             alt="IBM Logo"
                             width={180}
                             height={60}
