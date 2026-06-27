@@ -146,7 +146,7 @@ export default function HomePage() {
             />
           </div>
            <Image
-              src="/CSR_IBM_logo_PNG.png"
+              src="/CSR_IBM_logo_PNG-04.png"
               alt="IBM Logo"
               width={150}
               height={100}

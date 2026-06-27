@@ -48,3 +48,4 @@ debug.log
 dump/
 seed/
 .env.local
+google-credentials.json
