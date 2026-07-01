@@ -11,7 +11,7 @@ async function getHandler(request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page")) || 1;
     const limit = parseInt(searchParams.get("limit")) || 10;
-    const search = (searchParams.get("search") || "").trim(); // trim spaces so pure-space queries don't filter
+    const search = (searchParams.get("search") || "").trim();
     const skip = (page - 1) * limit;
 
     // Build search query
@@ -30,12 +30,26 @@ async function getHandler(request) {
       };
     }
 
-    const teams = await Team.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Only fetch fields the admin table actually renders.
+    // .lean() returns plain JS objects (skips Mongoose hydration) — much faster.
+    // members is included so expanded rows & progress bars work correctly.
+    const TABLE_SELECT = [
+      'teamID', 'teamName', 'internshipName', 'courseName',
+      'collegeName', 'collegeId', 'leaderName', 'email',
+      'totalMembers', 'totalFemaleMembers', 'createdAt',
+      'submitConceptNote', 'submitFinalDeliverable', 'folderStructureEnabled',
+      'members'
+    ].join(' ');
 
-    const total = await Team.countDocuments(query);
+    const [teams, total] = await Promise.all([
+      Team.find(query)
+        .select(TABLE_SELECT)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Team.countDocuments(query),
+    ]);
 
     return NextResponse.json(
       createResponse(true, "Teams fetched successfully", {

@@ -97,4 +97,21 @@ const TeamSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 })
 
+// ── Performance indexes ──────────────────────────────────────────────────────
+// createdAt: default sort field — must be indexed for fast pagination
+TeamSchema.index({ createdAt: -1 });
+
+// Fields used in $or search queries
+TeamSchema.index({ collegeName: 1 });
+TeamSchema.index({ collegeId: 1 });
+TeamSchema.index({ leaderName: 1 });
+TeamSchema.index({ email: 1 });
+TeamSchema.index({ teamName: 1 });
+TeamSchema.index({ courseName: 1 });
+// teamID already has unique: true which creates an index automatically
+
+// folderStructureEnabled used in folders view filter
+TeamSchema.index({ folderStructureEnabled: 1 });
+// ────────────────────────────────────────────────────────────────────────────
+
 export default mongoose.models.Team || mongoose.model("Team", TeamSchema)
