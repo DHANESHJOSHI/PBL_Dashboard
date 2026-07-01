@@ -79,17 +79,28 @@ export default function AdminDashboard() {
 
   // Export teams functionality
   const handleExportTeams = async () => {
+    if (isExporting) return; // prevent double-click
     setIsExporting(true);
     try {
+      const token = localStorage.getItem('adminToken');
+      if (!token) {
+        toast.error('Authentication token missing. Please log in again.');
+        return;
+      }
+
       const response = await fetch('/api/admin/export-teams', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
       if (response.ok) {
         const blob = await response.blob();
+        if (blob.size === 0) {
+          toast.error('Export returned empty file. Please try again.');
+          return;
+        }
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -100,11 +111,12 @@ export default function AdminDashboard() {
         window.URL.revokeObjectURL(url);
         toast.success('Teams exported successfully!');
       } else {
-        throw new Error('Export failed');
+        const errData = await response.json().catch(() => ({}));
+        toast.error(errData.message || `Export failed (${response.status}). Please try again.`);
       }
     } catch (error) {
       console.error('Export error:', error);
-      toast.error('Failed to export teams');
+      toast.error('Failed to export teams. Check your connection and try again.');
     } finally {
       setIsExporting(false);
     }
@@ -178,7 +190,8 @@ export default function AdminDashboard() {
     try {
       setIsLoading(true);
       const token = localStorage.getItem("adminToken");
-      const searchParam = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
+      const trimmedSearch = searchTerm.trim(); // remove leading/trailing spaces
+      const searchParam = trimmedSearch ? `&search=${encodeURIComponent(trimmedSearch)}` : '';
       const response = await fetch(`/api/admin/teams?page=${page}&limit=${limit}${searchParam}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -634,6 +647,7 @@ export default function AdminDashboard() {
               setSelectedTeams={setSelectedTeams}
               handleBulkDelete={handleBulkDelete}
               handleExportTeams={handleExportTeams}
+              isExporting={isExporting}
               handleMarksProgressUpload={handleMarksProgressUpload}
             />
           )}

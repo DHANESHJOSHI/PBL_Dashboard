@@ -11,7 +11,7 @@ async function getHandler(request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page")) || 1;
     const limit = parseInt(searchParams.get("limit")) || 10;
-    const search = searchParams.get("search") || "";
+    const search = (searchParams.get("search") || "").trim(); // trim spaces so pure-space queries don't filter
     const skip = (page - 1) * limit;
 
     // Build search query
@@ -21,12 +21,11 @@ async function getHandler(request) {
         $or: [
           { teamID: { $regex: search, $options: 'i' } },
           { teamName: { $regex: search, $options: 'i' } },
-          { internshipName: { $regex: search, $options: 'i' } },
           { courseName: { $regex: search, $options: 'i' } },
           { collegeName: { $regex: search, $options: 'i' } },
+          { collegeId: { $regex: search, $options: 'i' } },
           { leaderName: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
-          { collegeId: { $regex: search, $options: 'i' } }
         ]
       };
     }

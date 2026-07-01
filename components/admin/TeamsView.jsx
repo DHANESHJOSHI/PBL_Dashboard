@@ -35,6 +35,7 @@ export default function TeamsView({
   setSelectedTeams,
   handleBulkDelete,
   handleExportTeams,
+  isExporting,
   handleMarksProgressUpload
 }) {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
@@ -150,6 +151,7 @@ export default function TeamsView({
         setSelectedTeams={setSelectedTeams}
         handleBulkDelete={handleBulkDelete}
         handleExportTeams={handleExportTeams}
+        isExporting={isExporting}
         handleMarksProgressUpload={handleMarksProgressUpload}
       />
 

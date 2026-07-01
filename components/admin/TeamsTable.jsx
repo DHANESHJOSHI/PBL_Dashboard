@@ -30,7 +30,7 @@ export default function TeamsTable({
   teams, totalTeams, searchTerm, setSearchTerm,
   page, setPage, limit, setLimit, isLoading,
   handleEditTeam, handleDeleteTeam, selectedTeams, setSelectedTeams,
-  handleBulkDelete, handleExportTeams, handleMarksProgressUpload
+  handleBulkDelete, handleExportTeams, isExporting, handleMarksProgressUpload
 }) {
   const [expandedTeams, setExpandedTeams] = useState(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
@@ -103,7 +103,19 @@ export default function TeamsTable({
             <Input
               placeholder="Search teams, internships, colleges, leaders..."
               value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); if (page !== 1) setPage(1); }}
+              onChange={(e) => {
+                // Strip leading/trailing spaces so blank-space searches don't trigger
+                const val = e.target.value;
+                setSearchTerm(val);
+                if (val.trim() !== searchTerm.trim() && page !== 1) setPage(1);
+              }}
+              onKeyDown={(e) => {
+                // Allow space inside words but prevent submitting pure-space query
+                if (e.key === 'Enter') {
+                  setSearchTerm(searchTerm.trim());
+                  setPage(1);
+                }
+              }}
               className="pl-9 pr-8 h-9 border-gray-200 focus:border-blue-400 focus:ring-blue-400 rounded-xl text-sm bg-white"
             />
             {searchTerm && (
@@ -118,9 +130,14 @@ export default function TeamsTable({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleExportTeams}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+                disabled={isExporting}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Download className="h-3.5 w-3.5" /> Export
+                {isExporting ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Exporting...</>
+                ) : (
+                  <><Download className="h-3.5 w-3.5" /> Export</>
+                )}
               </button>
               <div className="relative">
                 <input type="file" accept=".csv" onChange={handleMarksProgressUpload} className="absolute inset-0 opacity-0 cursor-pointer" id="marks-upload" />
@@ -326,8 +343,15 @@ export default function TeamsTable({
                                     </div>
                                     <div className="space-y-1">
                                       <div className="flex items-center justify-between text-[10px]">
-                                        <span className="text-gray-500 flex items-center gap-1"><Award className="h-2.5 w-2.5 text-emerald-500" />Progress</span>
-                                        <span className="font-semibold text-emerald-600">{member.learningPlanCompletion || '0%'}</span>
+                                        <span className="text-gray-500 flex items-center gap-1"><Award className="h-2.5 w-2.5 text-emerald-500" />Certificate</span>
+                                        {(member.certificateFile || member.certificateLink) ? (
+                                          <span className="font-semibold text-emerald-600 flex items-center gap-0.5">
+                                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                            Uploaded
+                                          </span>
+                                        ) : (
+                                          <span className="font-semibold text-red-500">Not Uploaded</span>
+                                        )}
                                       </div>
                                       <div className="flex items-center justify-between text-[10px]">
                                         <span className="text-gray-500 flex items-center gap-1"><FileText className="h-2.5 w-2.5 text-blue-500" />Marks</span>
