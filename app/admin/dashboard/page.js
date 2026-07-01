@@ -78,7 +78,7 @@ export default function AdminDashboard() {
   const [noticeForm, setNoticeForm] = useState({ title: "", content: "" });
 
   // Export teams functionality
-  const handleExportTeams = async () => {
+  const handleExportTeams = async (forceRefresh = false) => {
     if (isExporting) return; // prevent double-click
     setIsExporting(true);
     try {
@@ -88,28 +88,38 @@ export default function AdminDashboard() {
         return;
       }
 
-      const response = await fetch('/api/admin/export-teams', {
+      const url = forceRefresh
+        ? '/api/admin/export-teams?refresh=1'
+        : '/api/admin/export-teams';
+
+      const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
+        const isCached = response.headers.get('X-Cache') === 'HIT';
+        const cacheAge = response.headers.get('X-Cache-Age') || '';
+
         const blob = await response.blob();
         if (blob.size === 0) {
           toast.error('Export returned empty file. Please try again.');
           return;
         }
-        const url = window.URL.createObjectURL(blob);
+        const blobUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
+        a.href = blobUrl;
         a.download = `teams_export_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        toast.success('Teams exported successfully!');
+        window.URL.revokeObjectURL(blobUrl);
+
+        if (isCached) {
+          toast.success(`Export ready! (cached ${cacheAge} ago — click again for fresh data)`);
+        } else {
+          toast.success('Teams exported successfully! (freshly generated)');
+        }
       } else {
         const errData = await response.json().catch(() => ({}));
         toast.error(errData.message || `Export failed (${response.status}). Please try again.`);
@@ -121,6 +131,7 @@ export default function AdminDashboard() {
       setIsExporting(false);
     }
   };
+
 
   // Upload marks and progress functionality
   const handleMarksProgressUpload = async (event) => {

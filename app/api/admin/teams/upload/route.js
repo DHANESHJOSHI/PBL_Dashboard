@@ -12,38 +12,61 @@ async function handler(request) {
     const file = formData.get("file");
 
     if (!file) {
-      return NextResponse.json(createResponse(false, "No file provided"), {
-        status: 400,
-      });
+      return NextResponse.json(createResponse(false, "No file provided"), { status: 400 });
     }
 
     const fileName = file.name.toLowerCase();
     if (!fileName.endsWith(".csv")) {
-      return NextResponse.json(
-        createResponse(false, "Only CSV files are supported"),
-        { status: 400 }
-      );
+      return NextResponse.json(createResponse(false, "Only CSV files are supported"), { status: 400 });
     }
 
     const text = await file.text();
     const lines = text.split("\n").filter((line) => line.trim());
 
     if (lines.length < 2) {
-      return NextResponse.json(
-        createResponse(false, "Invalid CSV: No data rows found"),
-        { status: 400 }
-      );
+      return NextResponse.json(createResponse(false, "Invalid CSV: No data rows found"), { status: 400 });
     }
 
-    const headers = lines[0].split(",").map((h) => h.trim().replace(/"/g, ""));
-    const data = lines.slice(1).map((line) => {
-      const values = line.split(",").map((v) => v.trim().replace(/"/g, ""));
-      const row = {};
-      headers.forEach((header, index) => {
-        row[header] = values[index] || "";
-      });
-      return row;
-    });
+    // ── Parse CSV headers (handle quoted fields) ──────────────────────────────
+    const parseCSVLine = (line) => {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+          else { inQuotes = !inQuotes; }
+        } else if (ch === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
+
+    const rawHeaders = parseCSVLine(lines[0]);
+
+    // ── Normalise header names so both exported CSV and custom CSV work ────────
+    // Exported CSV uses "Team ID", custom CSV uses "teamId" — handle both.
+    const normaliseHeader = (h) =>
+      h.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+    const headerMap = {};
+    rawHeaders.forEach((h, i) => { headerMap[normaliseHeader(h)] = i; });
+
+    const getField = (values, ...keys) => {
+      for (const key of keys) {
+        const idx = headerMap[normaliseHeader(key)];
+        if (idx !== undefined && values[idx] !== undefined) return (values[idx] || '').trim();
+      }
+      return '';
+    };
+
+    const data = lines.slice(1).map((line) => parseCSVLine(line));
 
     const batchSize = 3000;
     let successful = 0;
@@ -53,7 +76,7 @@ async function handler(request) {
 
     for (let i = 0; i < data.length; i += batchSize) {
       const batch = data.slice(i, i + batchSize);
-      const result = await processBatch(batch);
+      const result = await processBatch(batch, getField, i + 2);
       successful += result.successful;
       failed += result.failed;
       errors.push(...result.errors);
@@ -61,24 +84,16 @@ async function handler(request) {
     }
 
     return NextResponse.json(
-      createResponse(true, "File processed", {
-        total: data.length,
-        successful,
-        failed,
-        errors, // ✅ return ALL errors, not sliced
-        processedTeams,
-      })
+      createResponse(true, "File processed", { total: data.length, successful, failed, errors, processedTeams })
     );
   } catch (error) {
     console.error("File upload error:", error);
-    return NextResponse.json(
-      createResponse(false, "Server error: " + error.message),
-      { status: 500 }
-    );
+    return NextResponse.json(createResponse(false, "Server error: " + error.message), { status: 500 });
   }
 }
 
-async function processBatch(data) {
+async function processBatch(data, getField, startRowNumber) {
+  // ── Group rows by teamId ──────────────────────────────────────────────────
   const teamGroups = {};
   const errors = [];
   const processedTeams = [];
@@ -86,17 +101,20 @@ async function processBatch(data) {
   let failed = 0;
 
   for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    const rowNumber = i + 2;
-    const { teamId, memberName, email, leaderName } = row;
+    const values = data[i];
+    const rowNumber = startRowNumber + i;
 
-    if (!teamId || !memberName || !email) {
-      errors.push({
-        row: rowNumber,
-        name: memberName || "-",
-        email: email || "-",
-        error: "Missing teamId, memberName, or email",
-      });
+    // Support both "Team ID" (exported CSV) and "teamId" (custom CSV)
+    const teamId = getField(values, 'Team ID', 'teamId', 'TeamID', 'team_id');
+    const memberName = getField(values, 'Member Name', 'memberName', 'fullName', 'name');
+    const email = getField(values, 'Member Email', 'email', 'memberEmail');
+
+    if (!teamId) {
+      errors.push({ row: rowNumber, name: memberName || '-', email: email || '-', error: 'Missing Team ID' });
+      continue;
+    }
+    if (!memberName || !email) {
+      errors.push({ row: rowNumber, name: memberName || '-', email: email || '-', error: 'Missing memberName or email' });
       continue;
     }
 
@@ -104,171 +122,145 @@ async function processBatch(data) {
       teamGroups[teamId] = {
         teamInfo: {
           teamId,
-          teamName: row.teamName,
-          collegeName: row.collegeName,
-          collegeId: row.collegeId,
-          internshipName: row.internshipName,
-          courseName: row.courseName,
-          leaderName: leaderName,
-          totalMembers: parseInt(row.totalMembers) || 1,
-          totalFemaleMembers: parseInt(row.totalFemaleMembers) || 0,
-          collegePincode: row.collegePincode || "",
+          teamName:            getField(values, 'Team Name', 'teamName'),
+          collegeName:         getField(values, 'College Name', 'collegeName'),
+          collegeId:           getField(values, 'College ID', 'collegeId'),
+          collegePincode:      getField(values, 'College Pincode', 'collegePincode'),
+          internshipName:      getField(values, 'Internship Name', 'internshipName'),
+          courseName:          getField(values, 'Course Name', 'courseName'),
+          leaderName:          getField(values, 'Leader Name', 'leaderName'),
+          totalMembers:        parseInt(getField(values, 'Total Members', 'totalMembers')) || 1,
+          totalFemaleMembers:  parseInt(getField(values, 'Total Female Members', 'totalFemaleMembers')) || 0,
         },
         members: [],
         rows: [],
       };
     }
 
+    const leaderName = teamGroups[teamId].teamInfo.leaderName;
     teamGroups[teamId].members.push({
-      fullName: memberName,
-      email: email.toLowerCase(),
-      learningPlanCompletion: row.learningPlanCompletion || "0%",
-      currentMarks: row.currentMarks || "0",
-      certificateLink: row.certificateLink || "",
-      resumeLink: row.resumeLink || "",
-      linkedinLink: row.linkedinLink || "",
-      portfolioLink: row.portfolioLink || "",
-      githubLink: row.githubLink || "",
-      additionalNotes: row.additionalNotes || "",
-      isLeader: memberName === leaderName,
+      fullName:               memberName,
+      email:                  email.toLowerCase(),
+      learningPlanCompletion: getField(values, 'Learning Plan Completion', 'learningPlanCompletion') || '0%',
+      currentMarks:           getField(values, 'Current Marks', 'currentMarks') || '0',
+      certificateLink:        getField(values, 'Certificate Link', 'certificateLink') || '',
+      certificateFile:        getField(values, 'Certificate File', 'certificateFile') || '',
+      resumeLink:             getField(values, 'Resume Link', 'resumeLink') || '',
+      resumeFile:             getField(values, 'Resume File', 'resumeFile') || '',
+      linkedinLink:           getField(values, 'LinkedIn Link', 'linkedinLink') || '',
+      portfolioLink:          getField(values, 'Portfolio Link', 'portfolioLink') || '',
+      githubLink:             getField(values, 'GitHub Link', 'githubLink') || '',
+      additionalNotes:        getField(values, 'Additional Notes', 'additionalNotes') || '',
+      isLeader:               memberName === leaderName,
+      memberRole:             getField(values, 'Member Role', 'memberRole'),
     });
-
     teamGroups[teamId].rows.push(rowNumber);
   }
 
+  // ── Upsert each team ──────────────────────────────────────────────────────
   for (const [teamId, group] of Object.entries(teamGroups)) {
     const { teamInfo, members, rows } = group;
 
-    const missing = [];
-    if (!teamInfo.collegeName) missing.push("collegeName");
-    if (!teamInfo.collegeId) missing.push("collegeId");
-    if (!teamInfo.leaderName) missing.push("leaderName");
-
-    if (missing.length > 0) {
-      failed++;
-      errors.push({
-        row: rows[0],
-        email: members[0]?.email || "-",
-        error: `Missing: ${missing.join(", ")}`,
-      });
-      continue;
-    }
-
     try {
-      const exists = await Team.findOne({
-        $or: [
-          { teamID: teamId },
-          {
-            collegeId: teamInfo.collegeId,
-            leaderName: teamInfo.leaderName,
-          },
-        ],
-      });
+      // Look up by teamID first (primary key), then fallback to collegeId+leaderName
+      const existingTeam = await Team.findOne({ teamID: teamId });
 
-      if (exists) {
-        // Team exists, check if we need to add new members
+      if (existingTeam) {
+        // ── UPDATE existing team ────────────────────────────────────────────
         let membersAdded = 0;
-        let membersSkipped = 0;
-        
-        for (const newMember of members) {
-          // Check if member email already exists in the team
-          const emailExists = exists.members.some(existingMember => 
-            existingMember.email.toLowerCase() === newMember.email.toLowerCase()
+        let membersUpdated = 0;
+
+        for (const incomingMember of members) {
+          const existingIdx = existingTeam.members.findIndex(
+            (m) => m.email.toLowerCase() === incomingMember.email.toLowerCase()
           );
-          
-          if (!emailExists) {
-            // Check for leader conflicts
-            const hasExistingLeader = exists.members.some(member => member.isLeader);
-            const isNewMemberLeader = newMember.isLeader;
-            
-            // If trying to add a new leader but team already has a leader, make the new member a regular member
-            const finalIsLeader = isNewMemberLeader && hasExistingLeader ? false : (newMember.isLeader || false);
-            
-            // Add new member to existing team
-            exists.members.push({
-              fullName: newMember.fullName,
-              email: newMember.email.toLowerCase(),
-              learningPlanCompletion: newMember.learningPlanCompletion || "0%",
-              currentMarks: newMember.currentMarks || "0",
-              certificateLink: newMember.certificateLink || "",
-              certificateFile: newMember.certificateFile || "",
-              resumeLink: newMember.resumeLink || "",
-              resumeFile: newMember.resumeFile || "",
-              linkedinLink: newMember.linkedinLink || "",
-              portfolioLink: newMember.portfolioLink || "",
-              githubLink: newMember.githubLink || "",
-              additionalNotes: newMember.additionalNotes || "",
-              isLeader: finalIsLeader,
+
+          if (existingIdx >= 0) {
+            // ✅ UPDATE existing member's data (marks, progress, links, etc.)
+            const m = existingTeam.members[existingIdx];
+            if (incomingMember.learningPlanCompletion) m.learningPlanCompletion = incomingMember.learningPlanCompletion;
+            if (incomingMember.currentMarks)           m.currentMarks           = incomingMember.currentMarks;
+            if (incomingMember.certificateLink)        m.certificateLink        = incomingMember.certificateLink;
+            if (incomingMember.certificateFile)        m.certificateFile        = incomingMember.certificateFile;
+            if (incomingMember.resumeLink)             m.resumeLink             = incomingMember.resumeLink;
+            if (incomingMember.resumeFile)             m.resumeFile             = incomingMember.resumeFile;
+            if (incomingMember.linkedinLink)           m.linkedinLink           = incomingMember.linkedinLink;
+            if (incomingMember.portfolioLink)          m.portfolioLink          = incomingMember.portfolioLink;
+            if (incomingMember.githubLink)             m.githubLink             = incomingMember.githubLink;
+            if (incomingMember.additionalNotes)        m.additionalNotes        = incomingMember.additionalNotes;
+            if (incomingMember.fullName)               m.fullName               = incomingMember.fullName;
+            membersUpdated++;
+          } else {
+            // ✅ ADD new member that doesn't exist yet
+            const hasLeader = existingTeam.members.some((m) => m.isLeader);
+            existingTeam.members.push({
+              ...incomingMember,
+              isLeader: incomingMember.isLeader && !hasLeader,
             });
             membersAdded++;
-          } else {
-            membersSkipped++;
           }
         }
-        
-        if (membersAdded > 0) {
-          // Update total members count
-          exists.totalMembers = exists.members.length;
-          
-          // Save the updated team
-          await exists.save();
-          successful++;
-          
-          processedTeams.push({
-            teamID: teamId,
-            teamName: exists.teamName,
-            action: `Updated existing team: ${membersAdded} new member(s) added, ${membersSkipped} member(s) skipped (already exist)`,
-            members: exists.members.length,
-            rows: rows
-          });
-        } else {
-          // All members already exist, skip
-          errors.push({
-            row: rows[0],
-            email: members[0]?.email || "-",
-            error: `All members already exist in team ${teamId}`,
-          });
-        }
+
+        // Also update team-level info if provided
+        if (teamInfo.teamName)       existingTeam.teamName       = teamInfo.teamName;
+        if (teamInfo.collegeName)    existingTeam.collegeName    = teamInfo.collegeName;
+        if (teamInfo.collegeId)      existingTeam.collegeId      = teamInfo.collegeId;
+        if (teamInfo.internshipName) existingTeam.internshipName = teamInfo.internshipName;
+        if (teamInfo.courseName)     existingTeam.courseName     = teamInfo.courseName;
+        if (teamInfo.leaderName)     existingTeam.leaderName     = teamInfo.leaderName;
+
+        existingTeam.totalMembers = existingTeam.members.length;
+        existingTeam.updatedAt = new Date();
+
+        await existingTeam.save();
+        successful++;
+        processedTeams.push({
+          teamID: teamId,
+          teamName: existingTeam.teamName,
+          action: `Updated: ${membersUpdated} member(s) updated, ${membersAdded} new member(s) added`,
+          members: existingTeam.members.length,
+          rows,
+        });
         continue;
       }
 
-      const leader = members.find((m) => m.isLeader);
-      if (!leader) {
+      // ── CREATE new team ─────────────────────────────────────────────────────
+      const missing = [];
+      if (!teamInfo.collegeName) missing.push('collegeName');
+      if (!teamInfo.collegeId)   missing.push('collegeId');
+      if (!teamInfo.leaderName)  missing.push('leaderName');
+
+      if (missing.length > 0) {
         failed++;
-        errors.push({
-          row: rows[0],
-          email: "-",
-          error: `Leader "${teamInfo.leaderName}" not found in members`,
-        });
+        errors.push({ row: rows[0], email: members[0]?.email || '-', error: `Missing: ${missing.join(', ')}` });
         continue;
       }
 
-      if (members.length !== teamInfo.totalMembers) {
-        errors.push({
-          row: rows[0],
-          email: leader.email,
-          error: `Expected ${teamInfo.totalMembers} members, found ${members.length}`,
-        });
-      }
+      // Determine leader from role or name match
+      let leader = members.find((m) => m.memberRole?.toLowerCase() === 'leader' || m.isLeader);
+      if (!leader) leader = members.find((m) => m.fullName === teamInfo.leaderName);
+      if (!leader) leader = members[0]; // fallback to first member
+
+      // Mark leader correctly
+      members.forEach((m) => { m.isLeader = m.email === leader.email; });
 
       const teamDoc = new Team({
-        teamID: teamId,
-        teamName: teamInfo.teamName || `Team ${teamId.slice(-6)}`,
-        collegeName: teamInfo.collegeName,
-        collegeId: teamInfo.collegeId,
-        collegePincode: teamInfo.collegePincode,
-        internshipName: teamInfo.internshipName || "",
-        courseName: teamInfo.courseName || "",
-        leaderName: teamInfo.leaderName,
-        email: leader.email,
-        totalMembers: teamInfo.totalMembers,
-        totalFemaleMembers: teamInfo.totalFemaleMembers,
+        teamID:             teamId,
+        teamName:           teamInfo.teamName || `Team ${teamId.slice(-6)}`,
+        collegeName:        teamInfo.collegeName,
+        collegeId:          teamInfo.collegeId,
+        collegePincode:     teamInfo.collegePincode,
+        internshipName:     teamInfo.internshipName || '',
+        courseName:         teamInfo.courseName || '',
+        leaderName:         teamInfo.leaderName,
+        email:              leader.email,
+        totalMembers:       teamInfo.totalMembers || members.length,
+        totalFemaleMembers: teamInfo.totalFemaleMembers || 0,
         folderStructureEnabled: false,
         members,
       });
 
       await teamDoc.save();
-
       successful++;
       processedTeams.push({
         teamID: teamId,
@@ -276,14 +268,12 @@ async function processBatch(data) {
         leaderName: teamDoc.leaderName,
         email: leader.email,
         memberCount: members.length,
+        action: 'Created new team',
       });
+
     } catch (err) {
       failed++;
-      errors.push({
-        row: rows[0],
-        email: members[0]?.email || "-",
-        error: err.message,
-      });
+      errors.push({ row: rows[0], email: members[0]?.email || '-', error: err.message });
     }
   }
 

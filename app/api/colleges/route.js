@@ -7,45 +7,30 @@ export async function GET() {
   try {
     await connectDB();
 
-    // Get unique college IDs and names from teams
-    const Col_Data =  await Team.find()
-                            .select('collegeId collegeName')  //get Only Relevant Fields
-                            .lean(); //Improves Performance by returning plain JS Objects
-    const uniqueCollegeMap = new Map();
-    Col_Data.forEach(college => {
-      const key = `${college.collegeId}-${(college.collegeName || "").toLowerCase().trim()}`;
-      if(!uniqueCollegeMap.has(key)){
-        uniqueCollegeMap.set(key, {
-          collegeId: college.collegeId,
-          collegeName: college.collegeName
-        });
-      }
-    });
-
-    const colleges = Array.from(uniqueCollegeMap.values()).sort((a,b) => 
-      a.collegeName.localeCompare(b.collegeName)
-    );
-
-      // Trash Code Starts here 
-    // const colleges = await Team.aggregate([
-    //   {
-    //     $group: {
-    //       _id: "$collegeId",
-    //       collegeName: { $first: "$collegeName" },
-    //       collegeId: { $first: "$collegeId" }
-    //     }
-    //   },
-    //   {
-    //     $project: {
-    //       _id: 0,
-    //       collegeId: "$_id",
-    //       collegeName: 1
-    //     }
-    //   },
-    //   {
-    //     $sort: { collegeName: 1 }
-    //   }
-    // ]);
+    // Use MongoDB $group aggregation — runs at DB level, never loads 15k docs into Node.js
+    // Old approach: Team.find().select(...).lean() → loads ALL 15k docs → slow/timeout
+    // New approach: aggregation groups by collegeId at DB level → returns only unique colleges
+    const colleges = await Team.aggregate([
+      {
+        $group: {
+          _id: "$collegeId",
+          collegeName: { $first: "$collegeName" },
+          collegeId:   { $first: "$collegeId"   },
+        },
+      },
+      {
+        $match: {
+          collegeId:   { $ne: null, $nin: ["", null] },
+          collegeName: { $ne: null, $nin: ["", null] },
+        },
+      },
+      {
+        $project: { _id: 0, collegeId: 1, collegeName: 1 },
+      },
+      {
+        $sort: { collegeName: 1 },
+      },
+    ]);
 
     return NextResponse.json(
       createResponse(true, "Colleges fetched successfully", { colleges })
@@ -54,7 +39,7 @@ export async function GET() {
   } catch (error) {
     console.error("Fetch colleges error:", error);
     return NextResponse.json(
-      createResponse(false, "Internal server error"), 
+      createResponse(false, "Internal server error"),
       { status: 500 }
     );
   }
