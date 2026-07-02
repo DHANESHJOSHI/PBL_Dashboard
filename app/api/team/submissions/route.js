@@ -110,7 +110,7 @@ async function handler(request) {
         try {
           console.log('Starting OCR validation for certificate...');
           const memberData = team.members[parseInt(memberIndex)];
-          const memberName = memberData.fullName.toLowerCase();
+          const memberName = memberData.fullName.toLowerCase().trim();
           
           let extractedText = "";
 
@@ -133,48 +133,74 @@ async function handler(request) {
           })();
 
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('OCR Timeout')), 15000)
+            setTimeout(() => reject(new Error('OCR Timeout')), 20000)
           );
 
           extractedText = await Promise.race([ocrPromise, timeoutPromise]);
 
-          console.log('Extracted text preview:', extractedText.substring(0, 100));
+          console.log('Extracted text preview:', extractedText.substring(0, 300));
 
-          const nameParts = memberName.split(' ').filter(w => w.trim().length > 2);
-          const nameMatch = nameParts.length > 0 ? nameParts.some(part => extractedText.includes(part)) : extractedText.includes(memberName.trim());
-          
-          const internshipName = team.internshipName ? team.internshipName.toLowerCase() : "";
-          const courseName = team.courseName ? team.courseName.toLowerCase() : "";
-          // Filter out generic words to ensure we match the specific track name
-          const genericWords = ['aicte', 'ibm', 'skillsbuild', 'bharatcares', 'internship', 'program', 'project'];
-          const courseKeywords = [...internshipName.split(' '), ...courseName.split(' ')]
-            .filter(w => w.length > 3 && !genericWords.includes(w));
+          // If extracted text is too short, skip validation (unreadable doc)
+          if (!extractedText || extractedText.trim().length < 20) {
+            console.warn('Extracted text too short, skipping validation and allowing upload.');
+            fileData.certificateValidationStatus = "NeedsReview";
+            fileData.certificateValidationNotes = "Could not extract enough text from document for validation.";
+          } else {
+            // Name matching: split by space, keep parts with length > 1 (handles single-word names too)
+            const nameParts = memberName.split(/\s+/).filter(w => w.trim().length > 1);
+            // Try full name match OR any individual part match
+            const nameMatch = extractedText.includes(memberName) ||
+              (nameParts.length > 0 && nameParts.some(part => extractedText.includes(part)));
             
-          // Check if at least one meaningful keyword of the internship or course is present
-          const courseMatch = courseKeywords.length === 0 || courseKeywords.some(kw => extractedText.includes(kw));
-          
-          if (!nameMatch || !courseMatch) {
-            let errorMsg = "Certificate is not valid. ";
-            if (!nameMatch && !courseMatch) {
-              errorMsg += "Both Name and Internship track do not match.";
-            } else if (!nameMatch) {
-              errorMsg += "Internship track matches successfully, but Name does not match your registered name.";
-            } else {
-              errorMsg += "Name matches successfully, but Internship track does not match your registered program.";
+            const internshipName = team.internshipName ? team.internshipName.toLowerCase() : "";
+            const courseName = team.courseName ? team.courseName.toLowerCase() : "";
+            // Filter out generic words to ensure we match the specific track name
+            const genericWords = ['aicte', 'ibm', 'skillsbuild', 'bharatcares', 'internship', 'program', 'project', 'completion', 'certificate', 'presented', 'awarded'];
+            const courseKeywords = [...internshipName.split(/\s+/), ...courseName.split(/\s+/)]
+              .filter(w => w.length > 3 && !genericWords.includes(w));
+              
+            // Check if at least one meaningful keyword of the internship or course is present
+            const courseMatch = courseKeywords.length === 0 || courseKeywords.some(kw => extractedText.includes(kw));
+            
+            console.log('OCR Debug:', {
+              memberName,
+              nameParts,
+              nameMatch,
+              courseKeywords,
+              courseMatch,
+              extractedSnippet: extractedText.substring(0, 200)
+            });
+            
+            if (!nameMatch || !courseMatch) {
+              let errorMsg = "Certificate is not valid. ";
+              if (!nameMatch && !courseMatch) {
+                errorMsg += "Both Name and Internship track do not match.";
+              } else if (!nameMatch) {
+                errorMsg += "Internship track matches successfully, but Name does not match your registered name.";
+              } else {
+                errorMsg += "Name matches successfully, but Internship track does not match your registered program.";
+              }
+              console.log('OCR Validation Failed:', errorMsg);
+              return NextResponse.json(createResponse(false, errorMsg), { status: 400 });
             }
-            console.log('OCR Validation Failed:', errorMsg);
-            return NextResponse.json(createResponse(false, errorMsg), { status: 400 });
+            
+            fileData.certificateValidationStatus = "Valid";
+            fileData.certificateValidationNotes = "Validation passed.";
+            console.log('OCR Validation: Valid');
           }
-          
-          fileData.certificateValidationStatus = "Valid";
-          fileData.certificateValidationNotes = "Validation passed.";
-          console.log('OCR Validation: Valid');
         } catch (error) {
           console.error("OCR Validation error:", error);
-          const msg = error.message === 'OCR Timeout' 
-            ? "Certificate validation timed out. Please try uploading a clearer image or PDF." 
-            : "Certificate validation failed or document unreadable. Please ensure it is a valid certificate.";
-          return NextResponse.json(createResponse(false, msg), { status: 400 });
+          if (error.message === 'OCR Timeout') {
+            // On timeout, allow upload but mark as NeedsReview instead of blocking
+            console.warn('OCR timed out — allowing upload with NeedsReview status.');
+            fileData.certificateValidationStatus = "NeedsReview";
+            fileData.certificateValidationNotes = "Validation timed out. Manual review required.";
+          } else {
+            // On other errors (e.g. corrupted PDF), allow with NeedsReview
+            console.warn('OCR error — allowing upload with NeedsReview status:', error.message);
+            fileData.certificateValidationStatus = "NeedsReview";
+            fileData.certificateValidationNotes = `Validation error: ${error.message}`;
+          }
         }
       }
     } else if (submissionMethod === 'link') {
@@ -200,20 +226,27 @@ async function handler(request) {
 
     // Validate member index range
     if (memberIndex !== null && memberIndex !== undefined) {
-      const memberIdx = parseInt(memberIndex);
-      if (isNaN(memberIdx) || memberIdx < 0 || memberIdx >= team.members.length) {
+      const memberIdxCheck = parseInt(memberIndex);
+      if (isNaN(memberIdxCheck) || memberIdxCheck < 0 || memberIdxCheck >= team.members.length) {
         console.error('Invalid member index:', { memberIndex, teamMembersLength: team.members.length });
         return NextResponse.json(createResponse(false, 'Invalid member index'), { status: 400 });
       }
     }
 
     // Ensure team has proper folder structure
-    if (!team.folderStructure || !team.folderStructure.memberFolders) {
-      console.log('Team missing proper folder structure, creating it...');
+    const memberIdx = memberIndex !== null && memberIndex !== undefined ? parseInt(memberIndex) : null;
+    const needsMemberFolder = (submissionType === 'certificate' || submissionType === 'resume') &&
+      memberIdx !== null &&
+      (!team.folderStructure || !team.folderStructure.memberFolders || !team.folderStructure.memberFolders[memberIdx]);
+
+    if (!team.folderStructure || !team.folderStructure.memberFolders || needsMemberFolder) {
+      console.log(`Team missing folder structure or member folder for index ${memberIdx}, rebuilding...`);
       const drive = await getDriveClient();
       
-      // Get GlobalSettings for shared drive configuration
-      const globalSettings = await GlobalSettings.findOne();
+      // Get GlobalSettings for shared drive configuration (prefer folderStructure type, fallback to any)
+      let globalSettings = await GlobalSettings.findOne({ settingType: 'folderStructure' });
+      if (!globalSettings) globalSettings = await GlobalSettings.findOne();
+      
       const folderStructure = await ensureTeamFolderStructure(drive, team, globalSettings);
       
       // Update team with new folder structure
@@ -229,6 +262,7 @@ async function handler(request) {
       
       // Update local team object
       team.folderStructure = folderStructure;
+      console.log(`Folder structure rebuilt successfully for team ${teamId}`);
     }
 
     let uploadResult;
