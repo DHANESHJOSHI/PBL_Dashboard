@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronDown, Search, X } from "lucide-react"
+import { ChevronDown, Search, X, Bell, ChevronLeft, ChevronRight, Calendar } from "lucide-react"
 import Image from "next/image"
 
 export default function HomePage() {
@@ -15,6 +15,8 @@ export default function HomePage() {
   const [errors, setErrors] = useState({})
   const [isCollegeDropdownOpen, setIsCollegeDropdownOpen] = useState(false)
   const [collegeSearch, setCollegeSearch] = useState("")
+  const [activeNoticeIndex, setActiveNoticeIndex] = useState(0)
+  const [noticeAnimating, setNoticeAnimating] = useState(false)
   const dropdownRef = useRef(null)
   const searchInputRef = useRef(null)
   const router = useRouter()
@@ -105,21 +107,42 @@ export default function HomePage() {
 
   const renderFormattedContent = (content) => {
     if (!content) return null
-    
-    // Convert markdown-style formatting to HTML
     let formatted = content
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/• (.*?)(?=\n|$)/g, '<li>$1</li>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-200 hover:text-white underline">$1</a>')
-    
-    // Wrap list items in ul tags
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-amber-200 hover:text-white underline font-medium">$1</a>')
     if (formatted.includes('<li>')) {
       formatted = formatted.replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc list-inside space-y-1 ml-4">$1</ul>')
     }
-    
     return <div dangerouslySetInnerHTML={{ __html: formatted }} />
   }
+
+  const getRelativeTime = (dateStr) => {
+    const now = new Date()
+    const date = new Date(dateStr)
+    const diffMs = now - date
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays} days ago`
+    return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
+
+  const goToNotice = useCallback((idx) => {
+    if (noticeAnimating || notices.length === 0) return
+    setNoticeAnimating(true)
+    setTimeout(() => {
+      setActiveNoticeIndex((idx + notices.length) % notices.length)
+      setNoticeAnimating(false)
+    }, 300)
+  }, [noticeAnimating, notices.length])
+
+  useEffect(() => {
+    if (notices.length <= 1) return
+    const timer = setInterval(() => goToNotice(activeNoticeIndex + 1), 5000)
+    return () => clearInterval(timer)
+  }, [notices.length, activeNoticeIndex, goToNotice])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 relative overflow-hidden">
@@ -166,33 +189,109 @@ export default function HomePage() {
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 max-w-7xl mx-auto">
           {/* Notice Board */}
           <div className="lg:w-1/2 xl:w-2/5">
-            <div className="bg-white/10 backdrop-blur-sm border-2 border-white rounded-3xl p-4 lg:p-6 h-80 lg:h-96">
-              <div className="bg-white text-blue-800 font-bold text-base lg:text-lg px-4 lg:px-6 py-2 lg:py-3 rounded-xl inline-block mb-4 lg:mb-6">
-                Notice Board
-              </div>
-              <div className="text-white space-y-3 lg:space-y-4 max-h-52 lg:max-h-64 overflow-y-auto">
-                {notices.length > 0 ? (
-                  notices.slice(0, 5).map((notice) => (
-                    <div key={notice._id} className="text-sm lg:text-base opacity-90 border-b border-white/20 pb-3 last:border-b-0">
-                      <div className="font-semibold mb-1">{notice.title}</div>
-                      <div className="text-xs lg:text-sm opacity-75 leading-relaxed">
-                        {renderFormattedContent(notice.content)}
+            <div className="relative h-80 lg:h-96" style={{ perspective: '1000px' }}>
+              {/* Glass card container */}
+              <div className="h-full rounded-3xl overflow-hidden" style={{
+                background: 'rgba(255,255,255,0.08)',
+                backdropFilter: 'blur(20px)',
+                border: '1.5px solid rgba(255,255,255,0.25)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.2)'
+              }}>
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-3.5" style={{
+                  background: 'rgba(255,255,255,0.10)',
+                  borderBottom: '1px solid rgba(255,255,255,0.15)'
+                }}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: 'rgba(251,191,36,0.25)', border: '1px solid rgba(251,191,36,0.4)' }}>
+                      <Bell className="h-4 w-4 text-amber-300" />
+                    </div>
+                    <div>
+                      <div className="text-white font-bold text-sm lg:text-base leading-tight">Notice Board</div>
+                      {notices.length > 0 && (
+                        <div className="text-white/50 text-[10px]">{notices.length} announcement{notices.length > 1 ? 's' : ''}</div>
+                      )}
+                    </div>
+                  </div>
+                  {notices.length > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => goToNotice(activeNoticeIndex - 1)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <span className="text-white/50 text-xs font-mono">{activeNoticeIndex + 1}/{notices.length}</span>
+                      <button
+                        onClick={() => goToNotice(activeNoticeIndex + 1)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Notice Content Area */}
+                <div className="relative flex-1 overflow-hidden" style={{ height: 'calc(100% - 56px)' }}>
+                  {notices.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-white/60 gap-3">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                        <Bell className="h-6 w-6 text-white/30" />
                       </div>
-                      <div className="text-xs opacity-60 mt-2">
-                        {new Date(notice.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
+                      <div className="text-sm font-medium">No notices at the moment</div>
+                      <div className="text-xs text-white/40">Check back soon for updates</div>
+                    </div>
+                  ) : (
+                    <div
+                      className="h-full overflow-y-auto px-5 py-4 transition-all duration-300"
+                      style={{ opacity: noticeAnimating ? 0 : 1, transform: noticeAnimating ? 'translateY(8px)' : 'translateY(0)' }}
+                    >
+                      {/* Notice number badge */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white" style={{ background: 'rgba(251,191,36,0.7)' }}>
+                          {activeNoticeIndex + 1}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-white/40 text-[10px]">
+                          <Calendar className="h-3 w-3" />
+                          {getRelativeTime(notices[activeNoticeIndex]?.createdAt)}
+                        </div>
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="text-white font-bold text-sm lg:text-base leading-snug mb-3" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
+                        {notices[activeNoticeIndex]?.title}
+                      </h3>
+
+                      {/* Divider */}
+                      <div className="mb-3" style={{ height: '1px', background: 'linear-gradient(90deg, rgba(251,191,36,0.5), rgba(255,255,255,0.05))' }} />
+
+                      {/* Content */}
+                      <div className="text-white/80 text-xs lg:text-sm leading-relaxed notice-content">
+                        {renderFormattedContent(notices[activeNoticeIndex]?.content)}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center opacity-75 py-8">
-                    <div className="text-sm lg:text-base">No notices available at the moment</div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
+
+              {/* Dot indicators */}
+              {notices.length > 1 && (
+                <div className="absolute -bottom-5 left-0 right-0 flex justify-center gap-1.5">
+                  {notices.slice(0, 8).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => goToNotice(i)}
+                      className="transition-all duration-300 rounded-full"
+                      style={{
+                        width: i === activeNoticeIndex ? '20px' : '6px',
+                        height: '6px',
+                        background: i === activeNoticeIndex ? 'rgba(251,191,36,0.9)' : 'rgba(255,255,255,0.3)'
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

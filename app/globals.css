@@ -110,3 +110,38 @@ button:hover {
 * {
   transition: all 0.2s ease-in-out;
 }
+
+/* Notice Board custom scrollbar */
+.notice-content::-webkit-scrollbar,
+.h-full.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+.notice-content::-webkit-scrollbar-track,
+.h-full.overflow-y-auto::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+}
+.notice-content::-webkit-scrollbar-thumb,
+.h-full.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.25);
+  border-radius: 4px;
+}
+
+/* Notice content rendered HTML styles (login page) */
+.notice-content strong {
+  font-weight: 700;
+  color: rgba(255,255,255,0.95);
+}
+.notice-content em {
+  font-style: italic;
+  color: rgba(255,255,255,0.85);
+}
+.notice-content ul {
+  list-style: disc;
+  list-style-position: inside;
+  margin-top: 4px;
+  space-y: 2px;
+}
+.notice-content li {
+  margin-bottom: 2px;
+}

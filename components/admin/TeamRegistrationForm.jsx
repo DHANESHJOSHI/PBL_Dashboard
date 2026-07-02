@@ -35,10 +35,11 @@ export default function TeamRegistrationForm({
         <form onSubmit={handleTeamFormSubmit}>
           {teamForm.step === 1 && (
             <div className="space-y-4 lg:space-y-6">
+              <p className="text-xs text-gray-400"><span className="text-red-500 font-bold">*</span> Required fields</p>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">
-                    Team Name
+                    Team Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     value={teamForm.data.teamName}
@@ -48,13 +49,14 @@ export default function TeamRegistrationForm({
                         data: { ...teamForm.data, teamName: e.target.value },
                       })
                     }
+                    required
                     className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
                     placeholder="Enter team name"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">
-                    Internship Name
+                    Internship Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     value={teamForm.data.internshipName}
@@ -64,6 +66,7 @@ export default function TeamRegistrationForm({
                         data: { ...teamForm.data, internshipName: e.target.value },
                       })
                     }
+                    required
                     className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
                     placeholder="Enter internship name"
                   />
@@ -86,7 +89,7 @@ export default function TeamRegistrationForm({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">
-                    College Name *
+                    College Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     value={teamForm.data.collegeName}
@@ -122,7 +125,7 @@ export default function TeamRegistrationForm({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">
-                    College ID *
+                    College ID <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     value={teamForm.data.collegeId}
@@ -139,7 +142,7 @@ export default function TeamRegistrationForm({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">
-                    Total Members *
+                    Total Members <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="number"

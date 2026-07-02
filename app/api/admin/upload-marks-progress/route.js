@@ -124,8 +124,18 @@ async function postHandler(request) {
           });
           
           if (updated) {
-            team.updatedAt = new Date();
-            await team.save();
+            // Use $set with specific member fields to avoid full-document validation
+            // (prevents errors on teams with legacy missing fields like collegePincode)
+            const memberUpdates = {};
+            team.members.forEach((member, idx) => {
+              memberUpdates[`members.${idx}.learningPlanCompletion`] = member.learningPlanCompletion;
+              memberUpdates[`members.${idx}.currentMarks`] = member.currentMarks;
+            });
+            await Team.findOneAndUpdate(
+              { _id: team._id },
+              { $set: { ...memberUpdates, updatedAt: new Date() } },
+              { runValidators: false }
+            );
           }
         }
         

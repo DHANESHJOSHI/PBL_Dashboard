@@ -65,7 +65,7 @@ const TeamSchema = new mongoose.Schema({
   internshipName: { type: String },
   courseName: { type: String },
   collegeName: { type: String, required: true },
-  collegePincode: { type: String, required: true },
+  collegePincode: { type: String, default: '' },
   collegeId: { type: String, required: true },
   leaderName: { type: String, required: true },
   email: { type: String, required: true },
