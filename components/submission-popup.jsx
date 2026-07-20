@@ -138,8 +138,10 @@ export default function SubmissionPopup({ isOpen, onClose, onSave, type, initial
 
       console.log('Preparing upload for:', {
         type,
-        fileName: file.name,
-        fileSize: file.size,
+        fileName: file?.name || null,
+        fileSize: file?.size || null,
+        submissionMethod,
+        driveLink: submissionMethod === "link" ? driveLink.trim() : null,
         teamID: teamData.teamID,
         memberIndex: initialData.memberIndex
       });
